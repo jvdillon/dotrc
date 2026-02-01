@@ -1,0 +1,87 @@
+# ~/.inputrc - readline configuration
+
+# 8-bit clean for international characters
+set input-meta on
+set output-meta on
+
+# Quality of life
+# set show-all-if-ambiguous on
+set visible-stats on
+set bell-style none
+set completion-ignore-case on
+set completion-map-case on
+set colored-stats on
+set colored-completion-prefix on
+set mark-symlinked-directories on
+set enable-bracketed-paste on
+set skip-completed-text on
+
+# What these do:
+#   show-all-if-ambiguous:      show completions on first tab, not second
+#   visible-stats:              show file type indicator (*/@ etc) in completions
+#   bell-style none:            no beeping
+#   completion-ignore-case:     case-insensitive completion
+#   completion-map-case:        treat - and _ as equivalent
+#   colored-stats:              color completions by file type
+#   colored-completion-prefix:  highlight typed prefix in completions
+#   mark-symlinked-directories: append / to symlinked directories
+#   enable-bracketed-paste:     safe paste (won't execute until enter)
+#   skip-completed-text:        avoid duplicating text when completing mid-word
+
+# To allow the use of 8bit-characters like the german umlauts, comment out
+# the line below. However this makes the meta key not work as a meta key,
+# which is annoying to those which don't need to type in 8-bit characters.
+# set convert-meta off
+
+# try to enable the application keypad when it is called.  Some systems
+# need this to enable the arrow keys.
+# set enable-keypad on
+
+# see /usr/share/doc/bash/inputrc.arrows for other codes of arrow keys
+
+# Tab / Shift+Tab: cycle through completions one at a time inline
+# (default shows all matches as list after second Tab)
+# TAB: menu-complete
+# "\e[Z": menu-complete-backward
+
+# Shift+Up / Shift+Down: history search
+"\e[1;2A": history-search-backward
+"\e[1;2B": history-search-forward
+
+# Delete / Insert (universal)
+"\e[3~": delete-char
+"\e[2~": quoted-insert
+
+# xterm / gnome-terminal / modern terms
+# Ctrl+Right / Ctrl+Left: word movement
+# Home / End: line movement
+"\e[1;5C": forward-word
+"\e[1;5D": backward-word
+"\eOH": beginning-of-line
+"\eOF": end-of-line
+
+# linux console / vt220
+# Home / End: line movement
+# Ctrl+Right / Ctrl+Left: word movement
+"\e[1~": beginning-of-line
+"\e[4~": end-of-line
+"\e[5C": forward-word
+"\e[5D": backward-word
+
+# vt100 / freebsd console
+# Home / End: line movement
+"\e[H": beginning-of-line
+"\e[F": end-of-line
+
+# rxvt
+# Home / End: line movement
+# Ctrl+Right / Ctrl+Left: word movement
+"\e[7~": beginning-of-line
+"\e[8~": end-of-line
+"\eOc": forward-word
+"\eOd": backward-word
+
+# fallback (double-escape)
+# Esc+Right / Esc+Left: word movement
+"\e\e[C": forward-word
+"\e\e[D": backward-word

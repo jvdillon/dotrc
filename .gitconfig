@@ -1,0 +1,91 @@
+# Note: repo overrides are in <repo>/.git/config
+[user]
+    name = Your Name
+    email = abc@xyz.com
+[core]
+    editor = vim
+[diff]
+    tool = vimdiff
+[merge]
+    tool = vimdiff
+[difftool]
+    prompt = false
+[submodule]
+    recurse = true
+[push]
+    autoSetupRemote = true
+[alias]
+    # "What will I push?"
+    # git config --global alias.pending 'log @{u}..HEAD --stat'
+	pending = log @{u}..HEAD --stat
+    p = pending
+
+    # Compares: HEAD (last commit) vs working directory
+    # Shows: All uncommitted changes (staged + unstaged)
+    nothave = status -uall --short
+    missing = nothave
+    m = missing
+    # diff --stat HEAD
+    # nothave = status --short
+
+    # "What will I push?" ("lite")
+    # git config --global alias.changes 'diff --stat @{u}..HEAD'
+	changes = diff --stat @{u}..HEAD
+
+    # git config --global alias.expunge-unreachable-now '!git reflog expire --expire-unreachable=now --all && git gc --prune=now'
+	expunge-unreachable-now = !git reflog expire --expire-unreachable=now --all && git gc --prune=now
+
+    # git config --global alias.ac '!git add -A && git commit -m'
+	ac = !git add -A && git commit -m
+
+    unstage = reset HEAD --
+    last = log -1 HEAD
+
+    # https://gist.github.com/robmiller/6018582
+
+    # mergemain = !git fetch && git merge origin/main && git pull
+    mergemain = !git switch main && git pull && git switch - && git merge main
+
+    # whereami = "!git rev-parse --abbrev-ref HEAD"
+    whereami = branch --show-current
+
+    # Fire up your difftool (e.g. Kaleidescope) with all the changes that
+    # are on the current branch.
+    diffall = difftool origin/main...
+
+    # Find the commits that were introduced by a merge
+    merge-log = "!git log `git merge-span .. $1`"
+    # Show the changes that were introduced by a merge
+    merge-diff = "!git diff `git merge-span ... $1`"
+    # As above, but in your difftool
+    merge-difftool = "!git difftool `git merge-span ... $1`"
+
+    # Interactively rebase all the commits on the current branch
+    rebase-branch = "!git rebase -i `git merge-base main HEAD`"
+
+    # Mark a file as "assume unchanged", which means that Git will treat it
+    # as though there are no changes to it even if there are. Useful for
+    # temporary changes to tracked files
+    assume = update-index --assume-unchanged
+    # Reverse the above
+    unassume = update-index --no-assume-unchanged
+    # Show the files that are currently assume-unchanged
+    assumed = "!git ls-files -v | grep ^h | cut -c 3-"
+
+    # Checkout our version of a file and add it
+    ours = "!f() { git checkout --ours $@ && git add $@; }; f"
+    # Checkout their version of a file and add it
+    theirs = "!f() { git checkout --theirs $@ && git add $@; }; f"
+[credential "https://github.com"]
+    helper =
+    helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+    helper =
+    helper = !/usr/bin/gh auth git-credential
+[credential]
+    helper = store
+[filter "lfs"]
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f

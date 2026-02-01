@@ -1,0 +1,1705 @@
+#!/usr/bin/bc -lq
+
+# This file was originally based on source from:
+# http://phodd.net/gnu-bc/code/funcs.bc
+# http://phodd.net/gnu-bc/
+
+## Not to be regarded as suitable for any purpose
+## Not guaranteed to return correct answers
+
+scale = 6
+
+define pi() {
+    return 4 * a(1)
+}
+pi = pi()
+e = e(1)
+
+# True mathematical modulo (result has same sign as y)
+define mod(x, y) {
+    auto os, r
+    os = scale
+    scale = 0
+    r = x % y
+    if (r != 0 && (r < 0) != (y < 0)) r += y
+    scale = os
+    return r
+}
+
+define floor(x) {
+    auto os, xx
+    os = scale
+    scale = 0
+    xx = x / 1
+    if (xx > x) xx -= 1
+    scale = os
+    return xx
+}
+
+define ceil(x) {
+    return -floor(-x)
+}
+
+define int(x) {
+    auto os
+    os = scale
+    scale = 0
+    x /= 1
+    scale = os
+    return x
+}
+
+define frac(x) {
+    return x - floor(x)
+}
+
+define abs(x) {
+    if (x < 0) return -x
+    return x
+}
+
+define sign(x) {
+    if (x == 0) return 0
+    return 2 * (x > 0) - 1
+}
+
+define min(x, y) {
+    if (y < x) return y
+    return x
+}
+
+define max(x, y) {
+    if (y > x) return y
+    return x
+}
+
+define round_up(x, y) {
+    return y * ceil(x / y)
+}
+
+define round_down(x, y) {
+    return y * floor(x / y)
+}
+
+# Round x to the nearest multiple of y
+define round(x, y) {
+    auto os, oib
+    os = scale
+    oib = ibase
+    scale += 1
+    ibase = A
+    y *= floor(x / y + .5)
+    ibase = oib
+    scale = os
+    return y
+}
+
+# Find the remainder of x/y
+define int_remainder(x, y) {
+    auto os
+    os = scale
+    scale = 0
+    x /= 1
+    y /= 1
+    x %= y
+    scale = os
+    return x
+}
+
+define remainder(x, y) {
+    auto os
+    os = scale
+    scale = 0
+    if (x == x / 1 && y == y / 1) {
+        scale = os
+        return int_remainder(x, y)
+    }
+    scale = os
+    return x - round_down(x, y)
+}
+
+# Greatest common divisor of x and y
+define int_gcd(x, y) {
+    auto r, os
+    os = scale
+    scale = 0
+    x /= 1
+    y /= 1
+    while (y > 0) {
+        r = x % y
+        x = y
+        y = r
+    }
+    scale = os
+    return x
+}
+
+define gcd(x, y) {
+    auto r, os
+    os = scale
+    scale = 0
+    if (x == x / 1 && y == y / 1) {
+        scale = os
+        return int_gcd(x, y)
+    }
+    scale = os
+    while (y > 0) {
+        r = remainder(x, y)
+        x = y
+        y = r
+    }
+    return x
+}
+
+# Lowest common multiple of x and y
+define int_lcm(x, y) {
+    auto r, m, os
+    os = scale
+    scale = 0
+    x /= 1
+    y /= 1
+    m = x * y
+    while (y > 0) {
+        r = x % y
+        x = y
+        y = r
+    }
+    m /= x
+    scale = os
+    return m
+}
+
+define lcm(x, y) {
+    return x * y / gcd(x, y)
+}
+
+# Remove largest possible power of 2 from x
+define oddpart(x) {
+    auto os
+    os = scale
+    scale = 0
+    x /= 1
+    if (x == 0) {
+        scale = os
+        return 1
+    }
+    while (x % 2 == 0) x /= 2
+    scale = os
+    return x
+}
+
+# Largest power of 2 in x
+define evenpart(x) {
+    auto os
+    os = scale
+    scale = 0
+    x /= oddpart(x / 1)
+    scale = os
+    return x
+}
+
+## Trig / Hyperbolic Trig
+
+define sin(x) {
+    return s(x)
+}
+
+define cos(x) {
+    return c(x)
+}
+
+define tan(x) {
+    auto cs
+    cs = c(x)
+    if (cs == 0) {
+        print "error: tan undefined at x=pi/2+n*pi\n"
+        return 0
+    }
+    return s(x) / cs
+}
+
+define sec(x) {
+    auto cs
+    cs = c(x)
+    if (cs == 0) {
+        print "error: sec undefined at x=pi/2+n*pi\n"
+        return 0
+    }
+    return 1 / cs
+}
+
+define csc(x) {
+    auto sn
+    sn = s(x)
+    if (sn == 0) {
+        print "error: csc undefined at x=n*pi\n"
+        return 0
+    }
+    return 1 / sn
+}
+
+define cot(x) {
+    auto sn
+    sn = s(x)
+    if (sn == 0) {
+        print "error: cot undefined at x=n*pi\n"
+        return 0
+    }
+    return c(x) / sn
+}
+
+define atan(x) {
+    return a(x)
+}
+
+define asin(x) {
+    if (x < -1 || x > 1) {
+        print "error: asin requires -1<=x<=1\n"
+        return 0
+    }
+    if (x == -1 || x == 1) return 2 * a(1) * x
+    return a(x / sqrt(1 - x^2))
+}
+
+define acos(x) {
+    if (x < -1 || x > 1) {
+        print "error: acos requires -1<=x<=1\n"
+        return 0
+    }
+    return 2 * a(1) - asin(x)
+}
+
+define asec(x) {
+    if (-1 < x && x < 1) {
+        print "error: asec requires |x|>=1\n"
+        return 0
+    }
+    return 2 * a(1) - a(sign(x) / sqrt(x^2 - 1))
+}
+
+define acsc(x) {
+    if (-1 < x && x < 1) {
+        print "error: acsc requires |x|>=1\n"
+        return 0
+    }
+    return a(sign(x) / sqrt(x^2 - 1))
+}
+
+define acot(x) {
+    return 2 * a(1) - a(x)
+}
+
+define acot2(x, y) {
+    return atan2(y, x)
+}
+
+define atan2(x, y) {
+    auto p
+    if (x == 0 && y == 0) return 0
+    p = (1 - sign(y)) * 2 * a(1) * (2 * (x >= 0) - 1)
+    if (x == 0 || y == 0) return p
+    return p + a(x / y)
+}
+
+define sinh(x) {
+    auto t
+    t = e(x)
+    return (t - 1 / t) / 2
+}
+
+define cosh(x) {
+    auto t
+    t = e(x)
+    return (t + 1 / t) / 2
+}
+
+define tanh(x) {
+    auto t
+    t = e(2 * x) - 1
+    return t / (t + 2)
+}
+
+define sech(x) {
+    auto t
+    t = e(x)
+    return 2 / (t + 1 / t)
+}
+
+define csch(x) {
+    auto t
+    t = e(x)
+    return 2 / (t - 1 / t)
+}
+
+define coth(x) {
+    auto t
+    t = e(2 * x) - 1
+    return (t + 2) / t
+}
+
+define asinh(x) {
+    return l(x + sqrt(x^2 + 1))
+}
+
+define acosh(x) {
+    if (x < 1) {
+        print "error: acosh requires x>=1\n"
+        return 0
+    }
+    return l(x + sqrt(x^2 - 1))
+}
+
+define atanh(x) {
+    if (x <= -1 || x >= 1) {
+        print "error: atanh requires -1<x<1\n"
+        return 0
+    }
+    return l((1 + x) / (1 - x)) / 2
+}
+
+define asech(x) {
+    if (x <= 0 || x > 1) {
+        print "error: asech requires 0<x<=1\n"
+        return 0
+    }
+    return l((sqrt(1 - x^2) + 1) / x)
+}
+
+define acsch(x) {
+    if (x == 0) {
+        print "error: acsch requires x!=0\n"
+        return 0
+    }
+    return l((sqrt(1 + x^2) * sign(x) + 1) / x)
+}
+
+define acoth(x) {
+    if (-1 <= x && x <= 1) {
+        print "error: acoth requires |x|>1\n"
+        return 0
+    }
+    return l((x + 1) / (x - 1)) / 2
+}
+
+define hypot(x, y) {
+    return sqrt(x^2 + y^2)
+}
+
+define hypot3(x, y, z) {
+    return sqrt(x^2 + y^2 + z^2)
+}
+
+define gudermann(x) {
+    return 2 * (a(e(x)) - a(1))
+}
+
+define agudermann(x) {
+    return atanh(s(x))
+}
+
+define besselj(n, x) {
+    return j(n, x)
+}
+
+## Exponential / Logs
+
+define exp(x) {
+    return e(x)
+}
+
+define log(x) {
+    if (x < 0) {
+        print "error: log undefined for x<0\n"
+        return 0
+    }
+    if (x == 0) {
+        print "error: log undefined for x=0\n"
+        return l(0)
+    }
+    return l(x)
+}
+
+define log10(x) {
+    return logb(10, x)
+}
+
+# Workhorse for pow and log
+# Helps determine whether a fractional power is legitimate for negative numbers
+# Returns 0 for even/odd; 1 for odd/odd; 2 for odd/even; 3 for irrational
+define id_frac_(y) {
+    auto os, oib, es, eps, i, cf[], st
+    oib = ibase
+    ibase = A
+    os = scale
+    scale = 0
+    es = 3 * os / 4
+    scale = os
+    eps = 10^-es
+    y += eps / 10
+    scale = es
+    y /= 1
+    scale = 0
+    if (y < 0) y *= -1
+    st = y - y / 1
+    if (st < eps) {
+        y = (y / 1) % 2
+        scale = os
+        ibase = oib
+        return y
+    }
+    # Determine parity of numerator and denominator of fractional part of y
+    # using a finite state machine and continued fraction based construct
+    i = 0
+    y = st
+    while (1) {
+        scale = es
+        y = 1 / y
+        scale = 0
+        y -= (cf[i += 1] = y / 1)
+        if (i > 100) {
+            cf[i = 1] = 3
+            break
+        }
+        if (1.5 * length(cf[i]) > es) {
+            cf[i] = 0
+            i -= 1
+            break
+        }
+        cf[i] = (cf[i] - 1) % 2 + 1
+        if (y == 0) break
+    }
+    if (i == 0) {
+        print "error: id_frac_ internal failure y=", y, "\n"
+        scale = os
+        ibase = oib
+        return 3
+    }
+    st = cf[i]
+    if (st < 3) {
+        while (i -= 1) st = (cf[i] * (st + 1)) % 3
+    }
+    scale = os
+    ibase = oib
+    return st
+}
+
+# Raise x to the y-th power
+define pow(x, y) {
+    auto os, p, ix, iy, fy, st
+    if (y == 0) return 1
+    if (x == 0) return 0
+    os = scale
+    scale = 0
+    ix = x / 1
+    iy = y / 1
+    fy = y - iy
+    scale = os
+    if (y != iy && x < 0) {
+        st = id_frac_(fy)
+        if (st == 0) return pow(-x, y)
+        if (st == 1) return -pow(-x, y)
+        if (st == 2) print "error: pow even root of negative\n"
+        if (st == 3) print "error: pow irrational power of negative\n"
+        return 0
+    }
+    if (y == iy) {
+        if (x == ix) {
+            p = ix^iy
+            if (iy > 0) {
+                scale = 0
+                p /= 1
+            }
+            scale = os
+            return p / 1
+        }
+        scale *= 2
+        p = x^iy
+        scale = os
+        return p / 1
+    }
+    p = ix^iy * e(fy / 1 * l(x))
+    scale = os * 3
+    if (ix) p *= (x / ix)^iy
+    scale = os
+    return p / 1
+}
+
+define expit(x) {
+    return 1 / (1 + exp(-x))
+}
+
+define logit(x) {
+    if (x <= 0 || x >= 1) {
+        print "error: logit requires 0<x<1\n"
+        return 0
+    }
+    return log(x / (1 - x))
+}
+
+# y-th root of x [x^(1/y)]
+define root(x, y) {
+    auto os, iy, iz, z, xn
+    z = pow(x, 1 / y)
+    os = scale
+    scale = 0
+    if (x == x / 1 && y == (iy = y / 1)) {
+        if ((xn = (iz = 1 + z / 1)^iy) == x) {
+            scale = os
+            return iz
+        }
+        if ((xn = (iz -= 1)^iy) == x) {
+            scale = os
+            return iz
+        }
+    }
+    scale = os
+    return z
+}
+
+# Logarithm of x in given base: logb(2,32) = 5 because 2^5 = 32
+define logb(base, x) {
+    auto os, i, l, sx, st
+    if (base == x) return 1
+    if (x == 0) {
+        print "error: logb undefined for x=0\n"
+        return l(0)
+    }
+    if (x == 1) return 0
+    if (base == 0) {
+        print "error: logb undefined for base=0\n"
+        return 0
+    }
+    if (base == 1) {
+        print "error: logb undefined for base=1\n"
+        return -l(0)
+    }
+    scale += 6
+    if ((-1 < base && base < 0) || (0 < base && base < 1)) {
+        x = -logb(1 / base, x)
+        scale -= 6
+        return x / 1
+    }
+    if ((-1 < x && x < 0) || (0 < x && x < 1)) {
+        x = -logb(base, 1 / x)
+        scale -= 6
+        return x / 1
+    }
+    if (base < 0) {
+        sx = 1
+        if (x < 0) {
+            x *= -1
+            sx = -1
+        }
+        l = logb(-base, x)
+        st = id_frac_(l)
+        if ((st == 0 && sx == 1) || (st == 1 && sx == -1)) {
+            scale -= 6
+            return l
+        }
+        if (st <= 1) print "error: logb negative base wrong sign\n"
+        if (st == 2) print "error: logb negative base implies even root\n"
+        if (st == 3) print "error: logb negative base implies irrational power\n"
+        scale -= 6
+        return 0
+    }
+    if (x < 0) {
+        print "error: logb undefined for x<0 with positive base\n"
+        scale -= 6
+        return 0
+    }
+    x = l(x) / l(base)
+    scale -= 6
+    return x / 1
+}
+
+# Integer-only logarithm of x in given base
+define int_logb(base, x) {
+    auto os, c
+    if (0 < x && x <= 1) {
+        return -int_logb(base, 1 / x)
+    }
+    os = scale
+    scale = 0
+    base /= 1
+    x /= 1
+    if (base < 2) base = ibase
+    if (x == 0) {
+        scale = os
+        return 1 - base * A^os
+    }
+    if (x < base) {
+        scale = os
+        return 0
+    }
+    c = -1
+    while (x) {
+        c += 1
+        x /= base
+    }
+    scale = os
+    return c
+}
+
+# Lambert's W function 0 branch; numerically solves w*e(w) = x for w
+define lambertw0(x) {
+    auto oib, a, b, w, ow, lx, ew, eps, iters
+    oib = ibase
+    ibase = A
+    ew = -e(-1)
+    if (x < ew) {
+        print "error: lambertw0 requires x>=-1/e\n"
+        ibase = oib
+        return 0
+    }
+    if (x == ew) {
+        ibase = oib
+        return -1
+    }
+    # First approximation from Ringwald and Schrempp via Wikipedia
+    if (x < 0) {
+        w = x / ew
+    } else if (x < 500) {
+        lx = l(x + 1)
+        w = 0.665 * (1 + 0.0195 * lx) * lx + 0.04
+    } else {
+        lx = l(x)
+        w = l(x - 4) - (1 - 1 / lx) * l(lx)
+    }
+    # Halley iteration
+    ow = 0
+    eps = 10^-scale
+    scale += 3
+    while (abs(ow - w) > eps && w > -1) {
+        iters += 1
+        ow = w
+        ew = e(w)
+        a = w * ew
+        b = a + ew
+        a -= x
+        if (a == 0) break
+        b = b / a - 1 + 1 / (w + 1)
+        w -= 1 / b
+        if (x < -0.367) w -= eps
+    }
+    scale -= 3
+    ibase = oib
+    return w / 1
+}
+
+# Lambert's W function -1 branch; numerically solves w*e(w) = x for w
+define lambertw_1(x) {
+    auto oib, os, oow, ow, w, ew, eps, iters, total
+    oib = ibase
+    ibase = A
+    ew = -e(-1)
+    if (ew > x || x >= 0) {
+        print "error: lambertw_1 requires -1/e<=x<0\n"
+        ibase = oib
+        return 0
+    }
+    if (x == ew) {
+        ibase = oib
+        return -1
+    }
+    os = scale
+    eps = 10^-os
+    scale += 3
+    oow = 0
+    ow = 0
+    w = x
+    w = l(-w)
+    w -= l(-w)
+    w += sqrt(eps)
+    iters = 0
+    total = 0
+    while (abs(ow - w) > eps) {
+        oow = ow
+        ow = w
+        if (w == -1) break
+        w = (x * e(-w) + w^2) / (w + 1)
+        iters += 1
+        total += 1
+        if (total > 500) {
+            print "error: lambertw_1 failed to converge\n"
+            break
+        }
+        if (iters == 20 || oow == w) {
+            iters = 0
+            w -= 10^-scale
+            scale += 2
+        }
+    }
+    scale = os
+    ibase = oib
+    return w / 1
+}
+
+# LambertW wrapper; takes most useful branch based on x
+define w(x) {
+    if (x < 0) return lambertw_1(x)
+    return lambertw0(x)
+}
+
+# Numerically solve pow(y,y) = x for y
+define powroot(x) {
+    auto r
+    if (x == 0) {
+        print "error: powroot undefined for x=0\n"
+        return 0
+    }
+    if (x == 1 || x == -1) {
+        return x
+    }
+    if (x <= r = e(-e(-1))) {
+        print "error: powroot unimplemented for x<=e^(-e^-1)\n"
+        return 0
+    }
+    r = l(x)
+    r /= w(r)
+    return r
+}
+
+## Fibonacci
+
+# n-th Fibonacci number over the reals
+define fibonacci(n) {
+    auto a, b, c, intn, count, fracn, s5, os
+    if (n == 0) return 0
+    os = scale
+    scale = 0
+    count = n / 1
+    intn = count
+    if (n < 0) {
+        scale = os
+        a = -fibonacci(-n)
+        if (n == intn) return a * (-1)^(-intn)
+        return a * c(a(1) * 4 * n)
+    }
+    count += 2
+    a = -1
+    b = 1
+    c = 0
+    while (--count) {
+        c = a + b
+        a = b
+        b = c
+    }
+    scale = os
+    if (n == intn) return c
+    fracn = n - intn
+    s5 = sqrt(5)
+    a = e(fracn * l((1 + s5) / 2))
+    a *= (s5 * c + sqrt(5 * c^2 + 4 * (-1)^intn)) / 2
+    a = (a - c(a(1) * 4 * n) / a) / s5
+    return a
+}
+
+# Inverse of the above - cannot deal with values below 1 (except 0)
+define inverse_fibonacci(f) {
+    auto a, b, c, intn, intf, fracf, s5, phinx2, eps, s5f, z5f2, lph, pi, os
+    if (f == 0) return f
+    if (f < 1) return 0
+    os = scale
+    scale = 0
+    intf = f / 1
+    a = -1
+    b = 1
+    c = 0
+    for (intn = -2; c <= intf; intn++) {
+        c = a + b
+        a = b
+        b = c
+    }
+    scale = os
+    if (f == a) return intn
+    c = a
+    s5 = sqrt(5)
+    phinx2 = s5 * c + sqrt(5 * c^2 + 4 * (-1)^intn)
+    lph = l((1 + s5) / 2)
+    pi = a(1) * 4
+    s5f = s5 * f
+    z5f2 = 5 * f^2
+    a = 0.5
+    os += 8
+    for (scale = 8; scale <= os; scale += 8) {
+        b = 0
+        eps = A^(2 - scale)
+        while (abs(a - b) > eps) {
+            b = a
+            a = s5f + sqrt(z5f2 + 4 * c(pi * (intn + a)))
+            a /= phinx2
+            a = l(a) / lph
+        }
+        a = (a + b) / 2
+    }
+    os -= 8
+    scale = os
+    a /= 1
+    return intn + a
+}
+
+# n-th Lucas number over the reals
+define lucas(n) {
+    auto a, b, c, intn, count, fracn, os
+    if (n == 0) return 2
+    os = scale
+    scale = 0
+    count = n / 1
+    intn = count
+    if (n < 0) {
+        scale = os
+        a = lucas(-n)
+        if (n == intn) return a * (-1)^(-intn)
+        return a * c(a(1) * 4 * n)
+    }
+    count += 2
+    a = 3
+    b = -1
+    c = 2
+    while (--count) {
+        c = a + b
+        a = b
+        b = c
+    }
+    scale = os
+    if (n == intn) return c
+    fracn = n - intn
+    a = e(fracn * l((1 + sqrt(5)) / 2))
+    a *= (c + sqrt(c^2 - 4 * (-1)^intn)) / 2
+    a = a + c(a(1) * 4 * n) / a
+    return a
+}
+
+# Inverse of the above - inaccurate with values below 2 (except -1, 0, 1)
+define inverse_lucas(lv) {
+    auto a, b, c, intn, intl, fracl, phinx2, eps, lv2, lph, pi, os
+    if (lv < -1) {
+        print "error: inverse_lucas unimplemented for lv<-1\n"
+        return 0
+    }
+    if (-1 <= lv && lv < 1) return ((7 - 3 * lv) * lv - A) / (2 * A)
+    if (1 <= lv && lv <= 2) return 2 - lv
+    os = scale
+    scale = 0
+    intl = lv / 1
+    a = 3
+    b = -1
+    c = 2
+    for (intn = -2; c <= intl; intn++) {
+        c = a + b
+        a = b
+        b = c
+    }
+    scale = os
+    if (lv == a) return intn
+    c = a
+    phinx2 = c + sqrt(c^2 - 4 * (-1)^intn)
+    lph = l((1 + sqrt(5)) / 2)
+    pi = a(1) * 4
+    lv2 = lv^2
+    a = 0.5
+    os += 8
+    for (scale = 8; scale <= os; scale += 8) {
+        b = 0
+        eps = A^(2 - scale)
+        while (abs(a - b) > eps) {
+            b = a
+            a = lv + sqrt(lv2 - 4 * c(pi * (intn + a)))
+            a /= phinx2
+            a = l(a) / lph
+        }
+    }
+    os -= 8
+    scale = os
+    a /= 1
+    return intn + a
+}
+
+## Factorials
+
+# Gosper's approximation to the natural log of x!
+define gosper(x) {
+    auto os, s, intx, pi
+    pi = 4 * a(1)
+    if (x == 0) return 0
+    if (x < 0) {
+        os = scale
+        scale = 0
+        intx = x / 1
+        scale = os
+        if (x == intx) return (-1)^x * A^scale
+        x *= -1
+        pi *= x
+        s = s(pi)
+        if (s <= 0) return 1 - A^scale
+        return l(pi) - l(s) - gosper(x)
+    }
+    return x * (l(x) - 1) + (l(2 * x + 1 / 3) + l(pi)) / 2
+}
+
+# Gosper's approximation to n!
+define gfactorial(n) {
+    return ceil(e(gosper(n)))
+}
+
+# Nemes' approximation to the natural log of x!
+define nemes(x) {
+    auto os, s, lx, intx, pix
+    pix = 4 * a(1) * x
+    if (x == 0) return 0
+    if (x < 0) {
+        os = scale
+        scale = 0
+        intx = x / 1
+        scale = os
+        if (x == intx) return (-1)^x * A^scale
+        x *= -1
+        pix *= -1
+        s = s(pix)
+        if (s <= 0) return 1 - A^scale
+        return l(pix) - l(s) - nemes(x)
+    }
+    lx = l(x)
+    # C=12 in bc's hex notation
+    s = x * (lx - 1) + l(2 * pix) / 2 + 1 / (C * x + 2 / (5 * x + (5 * A + 3) / (4 * A + 2) / x))
+    s -= e(-7 * (9 / 8 + lx))
+    return s
+}
+
+# Nemes' approximation to n!
+define nemfactorial(n) {
+    return e(nemes(n))
+}
+
+# x! - approximation to the factorial function over the reals
+define factorial(x) {
+    auto i, xx, x2, xx2, k, a, b, na, nb, os, oib
+    if (x == 0 || x == 1) return 1
+    oib = ibase
+    ibase = A
+    if (x == 0.5) {
+        ibase = oib
+        return sqrt(a(1))
+    }
+    if (0 < x && x < 1) {
+        x += 1
+        return factorial(x) / x
+    }
+    os = scale
+    scale = 0
+    xx = x / 1
+    scale = os
+    if (x < 0) {
+        if (x == xx) {
+            print "error: factorial undefined for negative integers\n"
+            return 0
+        }
+        x = -x
+        a = pi * x
+        ibase = oib
+        return a / s(a) / factorial(x)
+    }
+    x2 = 2 * x
+    os = scale
+    scale = 0
+    xx2 = x2 / 1
+    scale = os
+    if (x == xx) {
+        xx = 1
+        for (i = x; i >= 1; i--) xx *= i
+        ibase = oib
+        return xx
+    } else if (x2 == xx2) {
+        x -= .5
+        xx = 1
+        for (i = x2; i > x; i--) xx *= i
+        scale += x
+        xx /= 2^(xx2 - 1)
+        xx *= sqrt(a(1))
+        scale -= x
+        ibase = oib
+        return xx / 1
+    }
+    x2 = 2 * (x - xx)
+    if (x2 > .5) {
+        x2 -= .5
+        xx += .5
+    }
+    xx += 5
+    a = factorial(xx)
+    na = nemfactorial(xx)
+    b = factorial(xx + 0.5)
+    nb = nemfactorial(xx + 0.5)
+    k = na / a
+    k += (nb / b - k) * x2
+    xx = nemfactorial(x + 5) / (k * (x + 5) * (x + 4) * (x + 3) * (x + 2) * (x + 1))
+    ibase = oib
+    return xx
+}
+
+# Logarithm of the above
+define logfactorial(x) {
+    auto i, xx, x2, xx2, k, a, b, na, nb, os, oib
+    if (x == 0 || x == 1) return 0
+    oib = ibase
+    ibase = A
+    if (x == 0.5) {
+        ibase = oib
+        return l(a(1)) / 2
+    }
+    if (x <= 2470) {
+        ibase = oib
+        return l(factorial(x))
+    }
+    if (0 < x && x < 1) {
+        x += 1
+        return logfactorial(x) - l(x)
+    }
+    os = scale
+    scale = 0
+    xx = x / 1
+    scale = os
+    if (x < 0) {
+        x = -x
+        a = a(1) * 4 * x
+        ibase = oib
+        na = s(a)
+        if (na <= 0) return 1 - 10^scale
+        return l(a) - l(na) - logfactorial(x)
+    }
+    x2 = 2 * x
+    os = scale
+    scale = 0
+    xx2 = x2 / 1
+    scale = os
+    if (x == xx) {
+        xx = 0.5 * x * 10^-scale
+        for (i = x; i >= 1; i--) xx += l(i)
+        ibase = oib
+        return xx
+    } else if (x2 == xx2) {
+        x -= .5
+        xx = 0.5 * x * 10^-scale
+        for (i = x2; i > x; i--) xx += l(i)
+        scale *= 2
+        xx -= (xx2 - 1) * l(2)
+        xx += 0.5 * l(a(1))
+        scale /= 2
+        ibase = oib
+        return xx / 1
+    }
+    x2 = 2 * (x - xx)
+    if (x2 > .5) {
+        x2 -= .5
+        xx += .5
+    }
+    xx += 5
+    a = logfactorial(xx)
+    na = nemes(xx)
+    b = logfactorial(xx + 0.5)
+    nb = nemes(xx + 0.5)
+    k = na / a
+    k += (nb / b - k) * x2
+    k = (11 * k - 3) / 8
+    xx = (nemes(x + 5) - l(x + 5) - l(x + 4) - l(x + 3) - l(x + 2) - l(x + 1)) / k
+    ibase = oib
+    return xx
+}
+
+# Inverse factorial (approximate) based on derivation by David W. Cantrell
+define inverse_factorial(x) {
+    auto t, f, eps, os, oib
+    if (x == 1 || x == 2) return x
+    oib = ibase
+    ibase = A
+    if (0.89 <= x && x <= 3.9) {
+        os = scale
+        if (scale > 25) scale = 25
+        eps = 10^(5 - scale)
+        if (eps > 1) eps = 1
+        t = x
+        f = x - factorial(t)
+        while (abs(f) > eps) {
+            t += f / x
+            f = x - factorial(t)
+        }
+        scale = os
+        ibase = oib
+        return t
+    }
+    scale += 3
+    t = l((x + 0.036534) / sqrt(8 * a(1)))
+    t /= lambertw0(t / e(1))
+    t -= .5
+    scale -= 3
+    ibase = oib
+    return t / 1
+}
+
+# Number of permutations of r items from a group of n (integers only)
+define int_permutation(n, r) {
+    auto i, p, os
+    os = scale
+    scale = 0
+    n /= 1
+    r /= 1
+    if (n < 0 || r < 0 || r > n) return 0
+    p = 1
+    for (i = n; i > n - r; i--) p *= i
+    scale = os
+    return p
+}
+
+define permutation(n, r) {
+    return factorial(n) / factorial(n - r)
+}
+
+# Number of combinations of r items from a group of n (integers only)
+define int_combination(n, r) {
+    auto c, os
+    os = scale
+    scale = 0
+    n /= 1
+    r /= 1
+    if (n < 0 || r < 0 || r > n) return 0
+    if (2 * r > n) r = n - r
+    c = int_permutation(n, r) / factorial(r)
+    scale = os
+    return c
+}
+
+define combination(n, r) {
+    return factorial(n) / factorial(n - r) / factorial(r)
+}
+
+# y-th factorial of x: x!_y (integers only)
+define int_multifactorial(y, x) {
+    auto i, xx, os
+    os = scale
+    scale = 0
+    x /= 1
+    y /= 1
+    xx = 1
+    for (i = x; i >= 1; i -= y) xx *= i
+    scale = os
+    return xx
+}
+
+define semifactorial(x) {
+    auto i, xx
+    if (x == 0 || x == 1) return 1
+    xx = int((x + 1) / 2)
+    if (x < 0 && x == xx * 2 - 1) {
+        return (-1)^xx * semifactorial(-2 * xx - 1)
+    }
+    xx = int(x)
+    if (x == xx) {
+        xx = 1
+        for (i = x; i >= 1; i -= 2) xx *= i
+        return xx
+    }
+    x /= 2
+    xx = factorial(x)
+    x -= .5
+    xx *= e(x * l(2))
+    xx /= sqrt(a(1))
+    return xx
+}
+
+## Triangular numbers
+
+define tri(x) {
+    auto xx
+    x = x * (x + 1) / 2
+    xx = int(x)
+    if (x == xx) return xx
+    return x
+}
+
+define trirt(x) {
+    auto xx
+    x = (sqrt(1 + 8 * x) - 1) / 2
+    xx = int(x)
+    if (x == xx) x = xx
+    return x
+}
+
+define tri_step_(t, s) {
+    auto tt
+    t = t + (1 + s * sqrt(1 + 8 * t)) / 2
+    tt = int(t)
+    if (tt == t) return tt
+    return t
+}
+
+define tri_succ(t) {
+    return tri_step_(t, 0 + 1)
+}
+
+define tri_pred(t) {
+    return tri_step_(t, 0 - 1)
+}
+
+## Polygonal Numbers
+
+# The xth s-gonal number
+define poly(s, x) {
+    auto xx
+    x *= (s / 2 - 1) * (x - 1) + 1
+    xx = int(x)
+    if (x == xx) x = xx
+    return x
+}
+
+# Inverse of the above (polygonal root)
+define inverse_poly(s, r) {
+    auto t, xx
+    t = (s -= 2) - 2
+    r = (sqrt(8 * s * r + t^2) + t) / s / 2
+    xx = int(r)
+    if (r == xx) r = xx
+    return r
+}
+
+# Converse of poly(); solves poly(s,x)=r for s
+define converse_poly(x, r) {
+    auto xx
+    x = 2 * ((r / x - 1) / (x - 1) + 1)
+    xx = int(x)
+    if (x == xx) x = xx
+    return x
+}
+
+## Arithmetic-Geometric mean
+
+define arigeomean(a, b) {
+    auto c, eps
+    eps = A^-scale
+    while (abs(a - b) > eps) {
+        c = (a + b) / 2
+        a = sqrt(a * b)
+        b = c
+    }
+    return a
+}
+
+## Error function and normal distribution
+
+define erf(x) {
+    auto s, t, b, n, x2, twonp1, eps
+    if (x == 0) return 0
+    if (x < 0) return -erf(-x)
+    if (x > 6) return 1
+    eps = A^-scale
+    x2 = x * x
+    s = x
+    b = x
+    t = 0
+    n = 0
+    twonp1 = 1
+    while (abs(s - t) > eps) {
+        t = s
+        b *= -x2 * twonp1
+        n += 1
+        twonp1 += 2
+        b /= n * twonp1
+        s += b
+        if (n > 1000) break
+    }
+    return s * 2 / sqrt(a(1))
+}
+
+define erfc(x) {
+    return 1 - erf(x)
+}
+
+define normcdf(x, m, s) {
+    return 0.5 * (1 + erf((x - m) / (s * sqrt(2))))
+}
+
+## Numerical integration
+
+# Simpson's rule: caller must define f(x) before calling
+define simpson(a, b, n) {
+    auto h, sum_even, sum_odd, i
+    h = (b - a) / (2 * n)
+    sum_even = 0
+    sum_odd = 0
+    for (i = 1; i <= n; i++) sum_odd += f(a + (2 * i - 1) * h)
+    for (i = 1; i < n; i++) sum_even += f(a + 2 * i * h)
+    return (f(a) + f(b) + 4 * sum_odd + 2 * sum_even) * h / 3
+}
+
+## Additional standard math functions
+
+define degrees(x) {
+    return x * 180 / pi
+}
+
+define radians(x) {
+    return x * pi / 180
+}
+
+define log2(x) {
+    if (x <= 0) {
+        print "error: log2 requires x>0\n"
+        return 0
+    }
+    return l(x) / l(2)
+}
+
+define cbrt(x) {
+    if (x < 0) return -e(l(-x) / 3)
+    if (x == 0) return 0
+    return e(l(x) / 3)
+}
+
+# e^x - 1, accurate for small x (avoids cancellation in e(x) - 1 when e^x ≈ 1)
+define expm1(x) {
+    auto t
+    t = 10^(-scale / 2)
+    if (abs(x) < t) {
+        return x + x^2 / 2 + x^3 / 6 + x^4 / 24
+    }
+    return e(x) - 1
+}
+
+# log(1 + x), accurate for small x (avoids cancellation in l(1+x) when 1+x ≈ 1)
+define log1p(x) {
+    auto t
+    if (x <= -1) {
+        print "error: log1p requires x>-1\n"
+        return 0
+    }
+    t = 10^(-scale / 2)
+    if (abs(x) < t) {
+        return x - x^2 / 2 + x^3 / 3 - x^4 / 4
+    }
+    return l(1 + x)
+}
+
+define copysign(x, y) {
+    if (y < 0) return -abs(x)
+    return abs(x)
+}
+
+define isqrt(x) {
+    auto os, r
+    if (x < 0) {
+        print "error: isqrt requires x>=0\n"
+        return 0
+    }
+    os = scale
+    scale = 0
+    r = sqrt(x) / 1
+    scale = os
+    return r
+}
+# Gamma function via Lanczos approximation
+define lgamma(x) {
+    auto g, c[], k, t, s, pi_, os
+    os = scale
+    if (x <= 0) {
+        scale = 0
+        k = x / 1
+        scale = os
+        if (x == k) {
+            print "error: lgamma undefined for non-positive integers\n"
+            return 0
+        }
+        pi_ = 4 * a(1)
+        return l(pi_ / s(-pi_ * x)) - lgamma(1 - x)
+    }
+    g = 7
+    c[0] = 0.99999999999980993
+    c[1] = 676.5203681218851
+    c[2] = -1259.1392167224028
+    c[3] = 771.32342877765313
+    c[4] = -176.61502916214059
+    c[5] = 12.507343278686905
+    c[6] = -0.13857109526572012
+    c[7] = 0.0000099843695780195716
+    c[8] = 0.00000015056327351493116
+    x -= 1
+    s = c[0]
+    for (k = 1; k <= 8; k++) s += c[k] / (x + k)
+    t = x + g + 0.5
+    scale = os
+    return 0.5 * l(2 * pi) + (x + 0.5) * l(t) - t + l(s)
+}
+
+define gamma(x) {
+    return e(lgamma(x))
+}
+
+## Numerically stable functions
+
+# log(1 - exp(x)) for x < 0
+define log1mexp(x) {
+    if (x >= 0) {
+        print "error: log1mexp requires x<0\n"
+        return 0
+    }
+    if (x < -l(2)) {
+        return log1p(-e(x))
+    }
+    return l(-expm1(x))
+}
+
+# x * log(y), with x=0 returning 0
+define xlogy(x, y) {
+    if (x == 0) return 0
+    return x * l(y)
+}
+
+## Array functions (pass array by reference, length as parameter)
+## Global array arr_[] with length narr_; use arr1-arr20 helpers to fill
+
+# Fill a[0..n-1] with start, start+step, start+2*step, ...
+define arange(*a__[], n, start, step) {
+    auto i
+    for (i = 0; i < n; i++) a__[i] = start + i * step
+    return n
+}
+
+# Print array elements
+define aprint(*a__[], n) {
+    auto i
+    for (i = 0; i < n; i++) a__[i]
+    return n
+}
+
+# L2 norm: sqrt(sum(a[i]^2))
+define anorm(*a__[], n) {
+    auto i, s
+    s = 0
+    for (i = 0; i < n; i++) s += a__[i]^2
+    return sqrt(s)
+}
+
+# Sort array in place (insertion sort)
+define asort(*a__[], n) {
+    auto i, j, t
+    for (i = 1; i < n; i++) {
+        t = a__[i]
+        j = i
+        while (j > 0 && a__[j - 1] > t) {
+            a__[j] = a__[j - 1]
+            j -= 1
+        }
+        a__[j] = t
+    }
+    return 0
+}
+
+# Store indices that would sort a[] into idx[]
+define aargsort(*idx__[], *a__[], n) {
+    auto i, j, t
+    for (i = 0; i < n; i++) idx__[i] = i
+    for (i = 1; i < n; i++) {
+        t = idx__[i]
+        j = i
+        while (j > 0 && a__[idx__[j - 1]] > a__[t]) {
+            idx__[j] = idx__[j - 1]
+            j -= 1
+        }
+        idx__[j] = t
+    }
+    return 0
+}
+
+# Remove consecutive duplicates, return new length
+define auniq(*a__[], n) {
+    auto i, j
+    if (n <= 1) return n
+    j = 1
+    for (i = 1; i < n; i++) {
+        if (a__[i] != a__[j - 1]) {
+            a__[j] = a__[i]
+            j += 1
+        }
+    }
+    return j
+}
+
+# Cumulative sum in place: a[i] = sum(a[0..i])
+define acumsum(*a__[], n) {
+    auto i
+    for (i = 1; i < n; i++) a__[i] += a__[i - 1]
+    return 0
+}
+
+# Log-sum-exp: log(sum(exp(a[])))
+define alogsumexp(*a__[], n) {
+    auto i, m, s
+    if (n <= 0) return l(0)
+    m = a__[0]
+    for (i = 1; i < n; i++) {
+        if (a__[i] > m) m = a__[i]
+    }
+    s = 0
+    for (i = 0; i < n; i++) s += e(a__[i] - m)
+    return m + l(s)
+}
+
+# Softmax: p[i] = exp(a[i]) / sum(exp(a[]))
+# Result stored back in a__[]
+define asoftmax(*a__[], n) {
+    auto i, lse
+    lse = alogsumexp(a__[], n)
+    for (i = 0; i < n; i++) a__[i] = e(a__[i] - lse)
+    return 0
+}
+
+# Log-softmax: log(p[i]) = a[i] - log(sum(exp(a[])))
+# Result stored back in a__[]
+define alog_softmax(*a__[], n) {
+    auto i, lse
+    lse = alogsumexp(a__[], n)
+    for (i = 0; i < n; i++) a__[i] -= lse
+    return 0
+}
+
+# Entropy: -sum(p * log(p)) from log probabilities
+define aentropy(*logp__[], n) {
+    auto i, s, p
+    s = 0
+    for (i = 0; i < n; i++) {
+        p = e(logp__[i])
+        if (p > 0) s -= p * logp__[i]
+    }
+    return s
+}
+
+# Underscore variants operate on global arr_[] and narr_
+define arange_(start, step) { return arange(arr_[], narr_, start, step) }
+define aprint_() { return aprint(arr_[], narr_) }
+define anorm_() { return anorm(arr_[], narr_) }
+define asort_() { return asort(arr_[], narr_) }
+define aargsort_(*idx__[]) { return aargsort(idx__[], arr_[], narr_) }
+define auniq_() { narr_ = auniq(arr_[], narr_); return narr_ }
+define acumsum_() { return acumsum(arr_[], narr_) }
+define alogsumexp_() { return alogsumexp(arr_[], narr_) }
+define asoftmax_() { return asoftmax(arr_[], narr_) }
+define alog_softmax_() { return alog_softmax(arr_[], narr_) }
+define aentropy_() { return aentropy(arr_[], narr_) }
+
+define arr1(a00) {
+    narr_ = 1
+    arr_[0] = a00
+    return 1
+}
+
+define arr2(a00, a01) {
+    narr_ = arr1(a00) + 1
+    arr_[1] = a01
+    return narr_
+}
+
+define arr3(a00, a01, a02) {
+    narr_ = arr2(a00, a01) + 1
+    arr_[2] = a02
+    return narr_
+}
+
+define arr4(a00, a01, a02, a03) {
+    narr_ = arr3(a00, a01, a02) + 1
+    arr_[3] = a03
+    return narr_
+}
+
+define arr5(a00, a01, a02, a03, a04) {
+    narr_ = arr4(a00, a01, a02, a03) + 1
+    arr_[4] = a04
+    return narr_
+}
+
+define arr6(a00, a01, a02, a03, a04, a05) {
+    narr_ = arr5(a00, a01, a02, a03, a04) + 1
+    arr_[5] = a05
+    return narr_
+}
+
+define arr7(a00, a01, a02, a03, a04, a05, a06) {
+    narr_ = arr6(a00, a01, a02, a03, a04, a05) + 1
+    arr_[6] = a06
+    return narr_
+}
+
+define arr8(a00, a01, a02, a03, a04, a05, a06, a07) {
+    narr_ = arr7(a00, a01, a02, a03, a04, a05, a06) + 1
+    arr_[7] = a07
+    return narr_
+}
+
+define arr9(a00, a01, a02, a03, a04, a05, a06, a07, a08) {
+    narr_ = arr8(a00, a01, a02, a03, a04, a05, a06, a07) + 1
+    arr_[8] = a08
+    return narr_
+}
+
+define arr10(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09) {
+    narr_ = arr9(a00, a01, a02, a03, a04, a05, a06, a07, a08) + 1
+    arr_[9] = a09
+    return narr_
+}
+
+define arr11(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10) {
+    narr_ = arr10(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09) + 1
+    arr_[10] = a10
+    return narr_
+}
+
+define arr12(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11) {
+    narr_ = arr11(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10) + 1
+    arr_[11] = a11
+    return narr_
+}
+
+define arr13(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12) {
+    narr_ = arr12(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11) + 1
+    arr_[12] = a12
+    return narr_
+}
+
+define arr14(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13) {
+    narr_ = arr13(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12) + 1
+    arr_[13] = a13
+    return narr_
+}
+
+define arr15(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14) {
+    narr_ = arr14(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13) + 1
+    arr_[14] = a14
+    return narr_
+}
+
+define arr16(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14, a15) {
+    narr_ = arr15(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14) + 1
+    arr_[15] = a15
+    return narr_
+}
+
+define arr17(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14, a15, a16) {
+    narr_ = arr16(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14, a15) + 1
+    arr_[16] = a16
+    return narr_
+}
+
+define arr18(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14, a15, a16, a17) {
+    narr_ = arr17(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14, a15, a16) + 1
+    arr_[17] = a17
+    return narr_
+}
+
+define arr19(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14, a15, a16, a17, a18) {
+    narr_ = arr18(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14, a15, a16, a17) + 1
+    arr_[18] = a18
+    return narr_
+}
+
+define arr20(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19) {
+    narr_ = arr19(a00, a01, a02, a03, a04, a05, a06, a07, a08, a09, a10, a11, a12, a13, a14, a15, a16, a17, a18) + 1
+    arr_[19] = a19
+    return narr_
+}

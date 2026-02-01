@@ -1,0 +1,333 @@
+# Add auto-completion and a stored history file of commands to your Python
+# interactive interpreter. Requires Python 2.0+, readline. Autocomplete is
+# bound to the Esc key by default (you can change it - see readline docs).
+#
+# Store the file in ~/.pystartup, and set an environment variable to point
+# to it:  "export PYTHONSTARTUP=~/.pystartup" in bash.
+
+# export PYTHONPATH=$PYTHONPATH:~/kuma
+# export PYTHONSTARTUP=~/.pystartup
+# alias ipython3='XLA_FLAGS=--xla_force_host_platform_device_count=2 ipython3 --no-confirm-exit --no-banner'
+# alias ipython=ipython3
+from __future__ import annotations
+
+import collections
+import contextlib
+import copy
+import dataclasses
+import functools
+import importlib
+import inspect
+import itertools
+import math
+import os
+import pathlib
+import sys
+import time
+import timeit
+
+from math import *
+from pathlib import Path
+
+
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Collection,
+    Generic,
+    Hashable,
+    Iterable,
+    Iterator,
+    Literal,
+    Mapping,
+    MutableMapping,
+    MutableSequence,
+    MutableSet,
+    NamedTuple,
+    Optional,
+    OrderedDict,
+    Protocol,
+    Sequence,
+    TypeAlias,
+    TypeVar,
+    TypedDict,
+    Union,
+)
+
+try:
+    from typing import LiteralString
+except ImportError:
+    pass
+
+from dataclasses import dataclass, field, KW_ONLY, InitVar
+
+import matplotlib
+from matplotlib import pyplot as plt
+
+
+# OLD:
+# sudo apt install libcairo2-dev libgirepository1.0-dev
+# python3 -m pip install --user --upgrade --break-system-packages ipython {gnu,}readline pycairo tk PyGObject<3.51.0
+# NEW:
+# sudo apt install libcairo2-dev libgirepository2.0-dev
+# python3 -m pip install --user --upgrade --break-system-packages ipython {gnu,}readline pycairo tk PyGObject
+
+
+try:
+    plt.switch_backend("gtk4agg")
+    backend = "gtk4"
+except Exception:
+    try:
+        plt.switch_backend("tkagg")
+        backend = "tk"
+    except Exception:
+        plt.switch_backend("agg")
+        backend = "agg"
+
+try:
+    from IPython import get_ipython
+
+    get_ipython().run_line_magic("load_ext", "autoreload")
+    get_ipython().run_line_magic("autoreload", "2")
+    get_ipython().run_line_magic(
+        "matplotlib",
+        # matplotlib.get_backend().lower(),  # %matplotlib --list
+        backend,
+    )
+except Exception:
+    pass
+finally:
+    del backend
+
+
+import numpy as np
+import scipy as sp
+from scipy import special as sps
+
+# "Chebyshev Approximation and How It Can Help You Save Money, Win Friends, and Influence People"
+# https://www.embeddedrelated.com/showarticle/152.php
+
+
+np.set_printoptions(
+    threshold=4 * np.get_printoptions()["threshold"],
+    edgeitems=30,
+    linewidth=100_000,
+    # formatter=dict(float=lambda x: '%10.03e' % x),
+)
+
+
+def factors(n: int) -> set[int]:
+    return set(
+        factor
+        for i in range(1, int(n**0.5) + 1)
+        if n % i == 0
+        for factor in (i, n // i)
+    )
+
+
+# Monkey patch things from scipy.
+expit = np.expit = np.sigmoid = sps.expit
+logit = np.logit = sps.logit
+softmax = np.softmax = sps.softmax
+logsumexp = np.logsumexp = sps.logsumexp
+log_softmax = np.log_softmax = sps.log_softmax
+
+# Monkey patch things from us.
+sys.path.insert(0, os.path.expanduser("~/.local/share/python"))
+from npmath import *
+
+try:
+    import torch
+    from torch import nn, Tensor
+    from torchvision.transforms import v2
+except ModuleNotFoundError:
+    pass
+
+
+# try:
+#  import seaborn as sns
+# except Exception:
+#  pass
+
+_T = TypeVar("_T")
+
+
+def reveal_type(obj: _T, /) -> _T:
+    print("Runtime type is", type(obj))
+    return obj
+
+
+import sys, inspect
+
+
+def get_calling_function():
+    """finds the calling function in many decent cases."""
+    fr = sys._getframe(1)  # inspect.stack()[1][0]
+    co = fr.f_code
+    for get in (
+        lambda: fr.f_globals[co.co_name],
+        lambda: getattr(fr.f_locals["self"], co.co_name),
+        lambda: getattr(fr.f_locals["cls"], co.co_name),
+        lambda: fr.f_back.f_locals[co.co_name],  # nested
+        lambda: fr.f_back.f_locals["func"],  # decorators
+        lambda: fr.f_back.f_locals["meth"],
+        lambda: fr.f_back.f_locals["f"],
+    ):
+        try:
+            func = get()
+        except (KeyError, AttributeError):
+            pass
+        else:
+            if func.__code__ == co:
+                return func
+    raise AttributeError("func not found")
+
+
+def printsource(anything) -> None:
+    print(inspect.getsource(anything))
+
+
+def printfile(anything) -> None:
+    filename = inspect.getsourcefile(anything)
+    try:
+        print(open(filename, "r").read())
+    except:
+        pass
+    print(filename)
+
+
+_T = TypeVar("_T")
+
+
+class Namespace(dict[str, _T], Generic[_T]):
+    """This allows a dictionary to be accessed as `x.item` vs. `x['item']`."""
+
+    __slots__: ClassVar[tuple[str, ...]] = ()
+    __getattr__ = dict[str, _T].__getitem__
+    __setattr__ = dict[str, _T].__setitem__
+    __delattr__ = dict[str, _T].__delitem__
+
+
+class Timer:
+    def __init__(self, prefix: str = ""):
+        self.prefix = prefix
+
+    def __enter__(self):
+        self.start = time.perf_counter()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end = time.perf_counter()
+        self.elapsed = elapsed_seconds = self.end - self.start
+        print(f"{self.prefix}{elapsed_seconds=:.3f}")
+
+
+# sed -e '/nvidia[_-]cudnn/d' -e '/^--extra-index-url/d' -e 's/+cu124//g' -e '/^torch/! s/==/>=/' ~/kuma/environments/kuma-aws-stable-pip-requirements.txt > ~/pip-kuma.txt
+# alias pipinstall="python3 -m pip install --user --upgrade --break-system-packages"
+# pipinstall pip && pipinstall -r ~/pip-kuma.txt -r ~/pip.txt
+
+
+# # cuda version: `nvcc --version`
+
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("binarized_mnist")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("celeb_a")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("cifar10")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("cifar100")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("criteo")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("emnist")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("omniglot")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("fashion_mnist")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("imagenet2012")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("imagenet_v2")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("iris")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("mnist")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("mnist_corrupted")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("moving_mnist")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("radon")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("svhn_cropped")' &
+# python3 -c 'import tensorflow_datasets as tfds; tfds.load("ucf101")' &
+
+
+if False:
+    import tensorflow as tf
+    import tensorflow_probability as tfp
+
+    def create_virtual_devices(
+        num_devices: int, device: Optional[tf.config.PhysicalDevice] = None
+    ) -> None:
+        if device is None:
+            physical_devices = tf.config.experimental.list_physical_devices()
+            device = physical_devices[0]
+        return tf.config.experimental.set_virtual_device_configuration(
+            device, [tf.config.experimental.VirtualDeviceConfiguration()] * num_devices
+        )
+
+    create_virtual_devices(5)
+    tf.random.set_seed(42)
+
+
+if False:
+    import jax
+    import jax.numpy as jnp
+    import jax.nn as jnn
+
+
+def show_img(img, title=None, ax=None, cmap=None):
+    """Shows a single image."""
+    if ax is None:
+        ax = plt.gca()
+    if cmap is None:
+        ax.imshow(img)
+    else:
+        ax.imshow(img[..., 0], cmap=cmap)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    if title:
+        ax.set_title(title)
+    return ax
+
+
+def show_img_grid(imgs, titles, cmap=None):
+    """Shows a grid of images."""
+    n = int(np.ceil(np.sqrt(len(imgs))))
+    _, axs = plt.subplots(n, n, figsize=(3 * n, 3 * n))
+    for i, (img, title) in enumerate(zip(imgs, titles)):
+        show_img(img, title=title, ax=axs[i // n][i % n], cmap=cmap)
+    for i in range(i + 1, n**2):
+        ax = axs[i // n][i % n]
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+
+def _setup_history():
+    import atexit
+    import rlcompleter
+    import gnureadline as readline
+
+    historyPath = os.path.expanduser("~/.pyhistory")
+
+    def save_history(historyPath=historyPath):
+        import gnureadline as readline
+
+        readline.write_history_file(historyPath)
+
+    if os.path.exists(historyPath):
+        readline.read_history_file(historyPath)
+    atexit.register(save_history)
+
+
+def astronaut() -> Tensor:
+    from skimage import data
+
+    x = data.astronaut()
+    x = torch.from_numpy(x).moveaxis(-1, -3).float() / 255
+    return x
+
+
+try:
+    _setup_history()
+except:
+    print("Not setting up history.")
+finally:
+    del _setup_history
