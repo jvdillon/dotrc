@@ -17,9 +17,9 @@ set updatetime=500
 
 " Use a dark background with syntax highlighting in color terminals.
 if &t_Co > 1 && !has("gui_running")
-	set background=dark
-	set notermguicolors
-	syntax enable
+    set background=dark
+    set notermguicolors
+    syntax enable
 endif
 
 " Clear the PAGER variable so :! commands don't pipe through a pager.
@@ -66,27 +66,27 @@ map Q gq
 
 " Enable filetype detection, plugins, and language-dependent indenting.
 if has("autocmd")
-  filetype plugin indent on
+    filetype plugin indent on
 
-  augroup vimrcEx
-  au!
+    augroup vimrcEx
+    autocmd!
 
-  " Wrap text files at 78 characters.
-  autocmd FileType text setlocal textwidth=78
+    " Wrap text files at 78 characters.
+    autocmd FileType text setlocal textwidth=78
 
-  " Jump to the last known cursor position when reopening a file.
-  autocmd BufReadPost *
-    \ if line("'\"") > 0 && line("'\"") <= line("$") |
-    \   exe "normal g`\"" |
-    \ endif
+    " Jump to the last known cursor position when reopening a file.
+    autocmd BufReadPost *
+        \ if line("'\"") > 0 && line("'\"") <= line("$") |
+        \   exe "normal g`\"" |
+        \ endif
 
-  augroup END
+    augroup END
 endif
 
 " Use 4-space indentation for Python files.
 augroup pythonindent
-  autocmd!
-  autocmd FileType python setl sw=4 sts=4 et
+    autocmd!
+    autocmd FileType python setl sw=4 sts=4 et
 augroup END
 
 " Toggle search highlighting with F1.
@@ -98,23 +98,23 @@ nnoremap <F2> :set wrap!<CR>
 
 " Toggle block comments with F11 (uncomment) and F12 (comment) per filetype.
 augroup commentkeys
-  autocmd!
-  autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F11> :-1/^# /s///<CR>
-  autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F12> :-1/^/s//# /<CR>
-  autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F11> :-1/^%/s///<CR>
-  autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F12> :-1/^/s//%/<CR>
-  autocmd BufNewFile,BufRead *.sc vmap <F11> :-1/^;/s///<CR>
-  autocmd BufNewFile,BufRead *.sc vmap <F12> :-1/^/s//;/<CR>
-  autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F11> :-1/^\/\//s///<CR>
-  autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F12> :-1/^/s//\/\//<CR>
+    autocmd!
+    autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F11> :-1/^# /s///<CR>
+    autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F12> :-1/^/s//# /<CR>
+    autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F11> :-1/^%/s///<CR>
+    autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F12> :-1/^/s//%/<CR>
+    autocmd BufNewFile,BufRead *.sc vmap <F11> :-1/^;/s///<CR>
+    autocmd BufNewFile,BufRead *.sc vmap <F12> :-1/^/s//;/<CR>
+    autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F11> :-1/^\/\//s///<CR>
+    autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F12> :-1/^/s//\/\//<CR>
 augroup END
 
 " Detect Python filetype and set comment keys for scripts using `uv run` shebang.
 augroup uvrundetect
-  autocmd!
-  autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | set filetype=python | endif
-  autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F11> :-1/^# /s///<CR> | endif
-  autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F12> :-1/^/s//# /<CR> | endif
+    autocmd!
+    autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | set filetype=python | endif
+    autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F11> :-1/^# /s///<CR> | endif
+    autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F12> :-1/^/s//# /<CR> | endif
 augroup END
 
 " Fix terminal escape codes for Shift and Ctrl arrow keys.
