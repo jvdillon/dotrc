@@ -20,7 +20,7 @@ escape ^Xx
 bind b eval "writebuf" "exec sh -c 'xsel -i -b < /tmp/screen-exchange'"
 
 # Disable alternate screen buffer so output stays in the terminal's native scrollback.
-termcapinfo xterm|xterms|xs|rxvt ti@:te@
+termcapinfo xterm*|xterms|xs|rxvt ti@:te@
 
 # Automatically detach the session when the terminal is closed.
 autodetach on
