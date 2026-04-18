@@ -124,10 +124,7 @@ if ! shopt -oq posix; then
   fi
 fi
 
-# export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-# export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64"
-
-# Fix scaling on hidp monitors.
+# Fix scaling on HiDPI monitors.
 export _JAVA_OPTIONS="-Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0"
 
 # Speed up GTK4 over X11 forwarding by disabling D-Bus session bus
@@ -144,14 +141,14 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
 
 # sudo update-alternatives --config cuda
 export CUDA_HOME=/usr/local/cuda
-if [ -d $CUDA_HOME ]; then
+if [ -d "$CUDA_HOME" ]; then
     export PATH="${CUDA_HOME}/bin:/usr/src/tensorrt/bin${PATH:+:${PATH}}"
     export LD_LIBRARY_PATH="${CUDA_HOME}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 fi
 unset CUDA_HOME
 
 export ROCM_HOME=/opt/rocm
-if [ -d $ROCM_HOME ]; then
+if [ -d "$ROCM_HOME" ]; then
     export PATH="${ROCM_HOME}/bin${PATH:+:${PATH}}"
     export LD_LIBRARY_PATH="${ROCM_HOME}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 fi

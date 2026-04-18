@@ -1,8 +1,11 @@
-export EMAIL='abc@xyz.com'  # TODO: Add email here!
+export EMAIL='abc@xyz.com'
 
 alias vi='nvim'
 alias vim='nvim'
 alias vimdiff='nvim -d'
+export EDITOR='nvim'
+export VISUAL="$EDITOR"
+export MANPAGER='nvim +Man!'
 
 # uvr is now in ~/.local/bin/uvr (symlink to ~/research/docs/ubuntu/uvr)
 # To get the function + RESEARCH_ROOT exported, source it:
@@ -32,13 +35,13 @@ _calc_scaled_geometry() {
     local file="$2"
 
     # Get screen dimensions
-    local screen_w=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f1)
-    local screen_h=$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f2)
+    local screen_w="$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f1)"
+    local screen_h="$(xdpyinfo | awk '/dimensions/{print $2}' | cut -d'x' -f2)"
 
     # Get image dimensions
-    local img_dims=$(identify -format "%wx%h" "$file" 2>/dev/null)
-    local img_w=$(echo "$img_dims" | cut -d'x' -f1)
-    local img_h=$(echo "$img_dims" | cut -d'x' -f2)
+    local img_dims="$(identify -format "%wx%h" "$file" 2>/dev/null)"
+    local img_w="$(echo "$img_dims" | cut -d'x' -f1)"
+    local img_h="$(echo "$img_dims" | cut -d'x' -f2)"
 
     # Calculate max dimensions at percent of screen
     local max_w=$((screen_w * percent / 100))
@@ -66,7 +69,7 @@ fv() {
         file="$1"
     fi
 
-    local geometry=$(_calc_scaled_geometry "$percent" "$file")
+    local geometry="$(_calc_scaled_geometry "$percent" "$file")"
     feh --scale-down --auto-zoom --geometry "$geometry" "$@"
 }
 
@@ -83,8 +86,8 @@ sv() {
 
     # If a single file is given, open all images in that directory
     if [[ -f "$file" ]]; then
-        local dir=$(dirname "$file")
-        local geometry=$(_calc_scaled_geometry "$percent" "$file")
+        local dir="$(dirname "$file")"
+        local geometry="$(_calc_scaled_geometry "$percent" "$file")"
         # Get all image files in directory, sorted
         shopt -s nullglob
         local images=("$dir"/*.{jpg,jpeg,JPG,JPEG,png,PNG,gif,GIF,bmp,BMP,webp,WEBP})
@@ -97,7 +100,7 @@ sv() {
     else
         # If directory or glob pattern, just pass through
         if [[ -n "$file" ]]; then
-            local geometry=$(_calc_scaled_geometry "$percent" "$file")
+            local geometry="$(_calc_scaled_geometry "$percent" "$file")"
             sxiv -g "$geometry" "$@"
         else
             echo "Usage: sv [percent] <image-file>"
@@ -118,12 +121,12 @@ sv() {
 
 md2html () {
     # ?config=TeX-AMS-MML_HTMLorMML
-    pandoc --mathjax=https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=Accessible -s --variable pagetitle=" " $@
+    pandoc --mathjax=https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=Accessible -s --variable pagetitle=" " "$@"
 }
 
 md2html_local () {
     # ?config=TeX-AMS-MML_HTMLorMML
-    pandoc --mathjax=/usr/share/javascript/mathjax/MathJax.js?config=Accessible -s --variable pagetitle=" " $@
+    pandoc --mathjax=/usr/share/javascript/mathjax/MathJax.js?config=Accessible -s --variable pagetitle=" " "$@"
 }
 
 # pdftk A=contract.pdf B=signature.pdf cat A1-r2 B1 output contract-signed.pdf
@@ -133,27 +136,23 @@ codesearch() {
     shift
     #local path="${!#}"  # Get the value of the last argument
     #set -- "${@:1:$(($#-1))}" # Reassign positional parameters without the last one
-    echo find -L "$path" -type f -iname \*.py -not -path \*.venv\* -exec grep -H --color $@ "{}" \;
-    find -L "$path" -type f -iname \*.py -not -path \*.venv\* -exec grep -H --color $@ "{}" \;
+    echo find -L "$path" -type f -iname \*.py -not -path \*.venv\* -exec grep -H --color "$@" "{}" \;
+    find -L "$path" -type f -iname \*.py -not -path \*.venv\* -exec grep -H --color "$@" "{}" \;
 }
 
 codesearch0() {
     # codesearch0 . -Ei --color import.*sys | cut -d: -f1 | sort | uniq | wc -l
     local path="$1"
     shift
-    find -L "$path" -type f -iname \*.py -not -path \*.venv -exec grep -H --color $@ "{}" \; -print0 |xargs -0
+    find -L "$path" -type f -iname \*.py -not -path \*.venv -exec grep -H --color "$@" "{}" \; -print0 |xargs -0
 }
 
 
-# Add an "alert" alias for long running commands.  Use like so:
-#   sleep 10; alert
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
-
-togif() {                                                                                                                                                                                                                                                 
-    local input="$1"                                                                                                                                                                                                                                           
-    local output="${2:-${input%.*}.gif}"                                                                                                                                                                                                                       
-    local fps="${3:-15}"                                                                                                                                                                                                                                       
-    local height="${4:-270}"                                                                                                                                                                                                                                   
+togif() {
+    local input="$1"
+    local output="${2:-${input%.*}.gif}"
+    local fps="${3:-15}"
+    local height="${4:-270}"
 
     # Test files:
     #   wget https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_30MB.mp4
@@ -164,51 +163,35 @@ togif() {
     #   https://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html
     #   https://stackoverflow.com/questions/42980663/ffmpeg-high-quality-animated-gif
 
-
     # Note: Google slides are 960x540.
 
-    [[ -z "$input" ]] && { echo "Usage: togif_hq input [output] [fps] [height]"; return 1; }                                                                                                                                                                   
-                                                                                                                               
+    [[ -z "$input" ]] && { echo "Usage: togif input [output] [fps] [height]"; return 1; }
+
     # -filter_complex "fps=$fps,scale=-1:$height:flags=lanczos,split[v1][v2];[v1]palettegen=stats_mode=full[palette];[v2][palette]paletteuse=dither=sierra2_4a" \
-    ffmpeg -nostdin -hide_banner -loglevel error -y \                                                                                                                                                                                                          
-        -i "$input" \                                                                                                                                                                                                                                            
-        -filter_complex "fps=$fps,scale=-1:$height:flags=lanczos+accurate_rnd+full_chroma_int,split[v1][v2];[v1]palettegen=max_colors=256:stats_mode=single[palette];[v2][palette]paletteuse=dither=floyd_steinberg:diff_mode=rectangle:new=1" \                 
-        -fps_mode passthrough \                                                                                                                                                                                                                                  
-        "$output"                                                                                                                                                                                                                                                
+    ffmpeg -nostdin -hide_banner -loglevel error -y \
+        -i "$input" \
+        -filter_complex "fps=$fps,scale=-1:$height:flags=lanczos+accurate_rnd+full_chroma_int,split[v1][v2];[v1]palettegen=max_colors=256:stats_mode=single[palette];[v2][palette]paletteuse=dither=floyd_steinberg:diff_mode=rectangle:new=1" \
+        -fps_mode passthrough \
+        "$output"
 }
 
-pipinstall() { python3 -m pip install --user --upgrade --break-system-packages $@; }
+pipinstall() { python3 -m pip install --user --upgrade --break-system-packages "$@"; }
 
-httpserver() { python -m http.server 80; }
+httpserver() { python -m http.server "${1:-80}"; }
 
 # export SDL_AUDIODRIVER=alsa
 # export AUDIODEV=hw:0,0
 
-#export PAGER="sh -c \"col -b | /usr/share/vim/vim72/macros/less.sh -c 'set ft=man nomod nolist' -\""
-#export PAGER="/bin/sh -c \"unset PAGER;col -b -x | \
-#    vim -R -c 'set ft=man nomod nolist' -c 'map q :q<CR>' \
-#    -c 'map <SPACE> <C-D>' -c 'map b <C-U>' \
-#    -c 'nmap K :Man <C-R>=expand(\\\"<cword>\\\")<CR><CR>' -\""
-
-# export CPLUS_INCLUDE=${HOME}/usr/include
-export EDITOR=vim
-export VISUAL=$EDITOR
-
 
 # <<<"" is a "here string" (as opposed to a "here document")
 ? () { bc <<< "$*"; }
-toupper () { echo $*|tr '[:lower:]' '[:upper:]'; }
-tolower () { echo $*|tr '[:upper:]' '[:lower:]'; }
-hex2dec () { echo "ibase=16;obase=A;$(toupper $*)" | \bc; }
-dec2hex () { echo "obase=16;$(toupper $*)" | \bc; }
+toupper () { echo "$*" | tr '[:lower:]' '[:upper:]'; }
+tolower () { echo "$*" | tr '[:upper:]' '[:lower:]'; }
+hex2dec () { echo "ibase=16;obase=A;$(toupper "$*")" | \bc; }
+dec2hex () { echo "obase=16;$(toupper "$*")" | \bc; }
 bin2dec () { echo "ibase=2;obase=A;$*" | \bc; }
 dec2bin () { echo "obase=2;$*" | \bc; }
 
-
-
-# --- Media
-# alias tv='export DISPLAY=:0.0;export DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS /proc/$(pgrep -nu $USER gnome-session)/environ|cut -d= -f2-)'
-# for f in /proc/*/environ;do a=`cat $f 2>/dev/null|tr '\0' '\n'|grep DBUS_SESSION_BUS`;f=${f%%/environ};f=${f##/proc/};b=`ps -p$f -o comm=`;[[ -z "$a" ]]||printf "%s\t%20s\t%s\n" "$f" "$b" "$a";done
 
 
 # --- Power
@@ -264,7 +247,7 @@ alias smartscp="rsync -aPhv --no-r --stats --rsh=ssh"
 
 whatsmyip () { curl --silent canhazip.com || curl --silent https://ipinfo.io/ip; }
 
-whatsmyhost () { host $(whatsmyip); }
+whatsmyhost () { host "$(whatsmyip)"; }
 
 
 checkvpn() {
@@ -272,7 +255,7 @@ checkvpn() {
     # Example: get_vpn_region|sed "2q;d"
     # Example: readarray -t info < <(get_vpn_region)
     # Example: get_vpn_region | xargs
-    local state=$(piactl -u dump daemon-state 2>/dev/null)
+    local state="$(piactl -u dump daemon-state 2>/dev/null)"
     local info=($(piactl get region 2>/dev/null || echo "Unknown"))
     info+=($(echo "$state" | jq -r '.connectedServer | [.commonName // "none", .ip // "none"] | join(" ")'))
     info+=($(echo "$state" | jq -r '.connectedConfig.vpnLocation.id' | sed -e 's/_/-/g'))
@@ -280,7 +263,7 @@ checkvpn() {
     printf "%s\n" "${info[@]}"
     #echo "${info[@]}"
     # piactl get connectionstate
-	# wget https://www.privateinternetaccess.com/what-is-my-ip -O- 2>&1 | \grep -o "You are connected to PIA"
+    # wget https://www.privateinternetaccess.com/what-is-my-ip -O- 2>&1 | \grep -o "You are connected to PIA"
 }
 
 
@@ -289,9 +272,9 @@ bandwidth_mbps() {
     local interval="${1:-3}"
     local iface="${2:-tun0}"
 
-    local mbits0=$(_get_mbits "$iface")
+    local mbits0="$(_get_mbits "$iface")"
     sleep "$interval"
-    local mbits1=$(_get_mbits "$iface")
+    local mbits1="$(_get_mbits "$iface")"
 
     if [[ "$mbits0" -lt "0" ]] || [[ "$mbits1" -lt "0" ]]; then
         echo "-1"
@@ -308,12 +291,12 @@ bandwidth_mbps() {
 _get_mbits() {
     local iface="$1"
 
-    local stats=$([[ -z "$iface" ]] || ip -s link show "$iface" 2>/dev/null)
+    local stats="$([[ -z "$iface" ]] || ip -s link show "$iface" 2>/dev/null)"
     if [[ -z "$stats" ]]; then
         echo "0"
         return 1
     fi
-    local rx_bytes=$(echo "$stats" | grep -A1 "RX:" | tail -1 | awk '{print $1}')
+    local rx_bytes="$(echo "$stats" | grep -A1 "RX:" | tail -1 | awk '{print $1}')"
     local tx_bytes=0 # $(echo "$stats" | grep -A1 "TX:" | tail -1 | awk '{print $1}')
 
     # Validate that we got numeric values
@@ -361,7 +344,7 @@ alias bc='bc -l'
 # # 1-up, long edge:
 # mdcat.py --ascii ~/GB.md | enscript -G -f Courier-Bold10 -DDuplex:DuplexNoTumble
 
-psview() { local f=$(mktemp --suffix=.ps); cat > "$f"; /usr/bin/evince "$f" & }
+psview() { local f="$(mktemp --suffix=.ps)"; cat > "$f"; /usr/bin/evince "$f" & }
 
 alias printcode='enscript -2rGE -DDuplex:true -DTumble:true'
 
@@ -378,7 +361,7 @@ vol() {
         amixer -q set Master toggle
     else
         #echo "invalid option"
-		amixer get 'Master'
+        amixer get 'Master'
     fi
 }
 
@@ -388,41 +371,12 @@ findgrep () { find . -iname "$1" -exec grep -Hi --color "$2" {} \;; }
 epochget() { date "+%s"; }
 
 epochfmt() {
-    TZ=`date "+%z"|sed -e 's/-/+/'`
-    echo `date -u --date "Jan 1, 1970 00:00:00 $TZ +$1 seconds" "+%m/%d %k:%M:%S"`
+    local tz="$(date "+%z" | sed -e 's/-/+/')"
+    echo "$(date -u --date "Jan 1, 1970 00:00:00 $tz +$1 seconds" "+%m/%d %k:%M:%S")"
 }
 
 epochdiff() {
-	echo `date -u --date "Jan 1, 1970 00:00:00 +0000 +$[$1-$2] seconds" "+%k:%M:%S"`
-}
-
-dual() {
-	if [[ $1 == "off" ]]; then
-		xrandr --output LVDS1 --mode 1366x768 --output VGA1 --off
-		sleep 1
-		gconftool-2 --set "/apps/panel/toplevels/top_panel_screen0/monitor" --type integer "0"
-		gconftool-2 --set "/apps/panel/toplevels/bottom_panel_screen0/monitor" --type integer "0"
-		#xgamma -gamma 0.85
-#		xrandr --output LVDS1 --gamma 1.2:1.2:1.2
-	elif [[ $1 == "on" ]]; then
-		xrandr --output LVDS1 --mode 1366x768 --output VGA1 --mode 1024x768 --right-of LVDS1
-		#xrandr --output LVDS1 --mode 1366x768 --output VGA1 --mode 1024x768 --above LVDS1
-		sleep 1
-		gconftool-2 --set "/apps/panel/toplevels/top_panel_screen0/monitor" --type integer "0"
-		gconftool-2 --set "/apps/panel/toplevels/bottom_panel_screen0/monitor" --type integer "0"
-		xrandr --output LVDS1 --gamma 1.1:1.1:1.1
-		xrandr --output VGA1  --gamma 2.0:2.0:1.8
-	elif [[ $1 == "clone" ]]; then
-		xrandr --output LVDS1 --mode 1366x768 --output VGA1 --mode 1024x768 --same-as LVDS1
-#		xrandr --output LVDS1 --gamma 1.2:1.2:1.2
-#		xrandr --output VGA1  --gamma 2.0:2.0:1.8
-	elif [[ $1 == "reset" ]]; then
-		xrandr --output LVDS1 --off           --output VGA1 --off
-		gconftool-2 --set "/apps/panel/toplevels/top_panel_screen0/monitor" --type integer "0"
-		gconftool-2 --set "/apps/panel/toplevels/bottom_panel_screen0/monitor" --type integer "0"
-	else
-		echo "unrecognized option: $1"
-	fi
+    echo "$(date -u --date "Jan 1, 1970 00:00:00 +0000 +$(($1 - $2)) seconds" "+%k:%M:%S")"
 }
 
 # sudo apt install festival festvox-us-slt-hts sox
@@ -431,37 +385,33 @@ say () { festival -b "(voice_cmu_us_slt_arctic_hts)" "(SayText \"$*\")"; }
 
 
 alias xev="xev | grep -A2 --line-buffered '^KeyRelease' | sed -n '/keycode /s/^.*keycode \([0-9]*\).* (.*, \(.*\)).*$/\1 \2/p'"
-# alias mountusb="sudo mount -t vfat /dev/sdb1 /media/external -o uid=1000,gid=100,utf8,dmask=027,fmask=137,defaults"
-# alias unmountusb="sudo umount /media/external"
-pause  () { kill -SIGSTOP $(pidof "$1"); }
-resume () { kill -SIGCONT $(pidof "$1"); }
+pause  () { kill -SIGSTOP "$(pidof "$1")"; }
+resume () { kill -SIGCONT "$(pidof "$1")"; }
 
 
 # --- Python
 
-export PYTHONSTARTUP=~/.pystartup
+export PYTHONSTARTUP="$HOME/.pystartup"
 alias ipython3='ipython3 --no-confirm-exit --no-banner'
 alias ipython='ipython3'
 # pip install --user notebook jupyter
 alias jupyter-kernel="jupyter notebook --NotebookApp.allow_origin='https://colab.research.google.com' --port=8888 --NotebookApp.port_retries=0"
 
-reverse() { python3 -c 'import fileinput as f; print(*reversed(list(f.input())), end="")' $@; }
-sum()     { python3 -c 'import fileinput as f; print(sum(float(n) for line in f.input() for n in line.split()))' $@; }
-min()     { python3 -c 'import fileinput as f; print(min(float(n) for line in f.input() for n in line.split()))' $@; }
-max()     { python3 -c 'import fileinput as f; print(max(float(n) for line in f.input() for n in line.split()))' $@; }
-median()  { python3 -c 'import fileinput as f, statistics as s; print(s.median(float(n) for line in f.input() for n in line.split()))' $@; }
-mean()    { python3 -c 'import fileinput as f, statistics as s; print(s.mean(float(n) for line in f.input() for n in line.split()))' $@; }
-std()     { python3 -c 'import fileinput as f, statistics as s; print(s.stdev(float(n) for line in f.input() for n in line.split()))' $@; }
-stats()   { python3 -c 'import fileinput as f, statistics as s; x=tuple(float(n) for line in f.input() for n in line.split()); print(min(x), s.median(x), max(x), s.mean(x), s.stdev(x), sep='\n')' $@; }
+reverse() { python3 -c 'import fileinput as f; print(*reversed(list(f.input())), end="")' "$@"; }
+sum()     { python3 -c 'import fileinput as f; print(sum(float(n) for line in f.input() for n in line.split()))' "$@"; }
+min()     { python3 -c 'import fileinput as f; print(min(float(n) for line in f.input() for n in line.split()))' "$@"; }
+max()     { python3 -c 'import fileinput as f; print(max(float(n) for line in f.input() for n in line.split()))' "$@"; }
+median()  { python3 -c 'import fileinput as f, statistics as s; print(s.median(float(n) for line in f.input() for n in line.split()))' "$@"; }
+mean()    { python3 -c 'import fileinput as f, statistics as s; print(s.mean(float(n) for line in f.input() for n in line.split()))' "$@"; }
+std()     { python3 -c 'import fileinput as f, statistics as s; print(s.stdev(float(n) for line in f.input() for n in line.split()))' "$@"; }
+stats()   { python3 -c 'import fileinput as f, statistics as s; x=tuple(float(n) for line in f.input() for n in line.split()); print(min(x), s.median(x), max(x), s.mean(x), s.stdev(x), sep='\n')' "$@"; }
 
 
 # --- Latex
 xdvi  () { /usr/bin/xdvi   "$1" &>/dev/null & }
 evince() { /usr/bin/evince "$1" &>/dev/null & }
 
-# export GMAIL_APP_PASSWORD=$([ -f ~/.gmail ] && cat ~/.gmail || echo "")
-
 # watch -n1 'awk "{printf \"%.1f W\n\", \$1/1000000}" /sys/class/power_supply/BAT*/power_now'
 power_draw() {
-  awk '{printf "%.1f W\n", $1/1000000}' /sys/class/power_supply/BAT*/power_now
+    awk '{printf "%.1f W\n", $1/1000000}' /sys/class/power_supply/BAT*/power_now
 }
