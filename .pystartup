@@ -158,9 +158,6 @@ def reveal_type(obj: _T, /) -> _T:
     return obj
 
 
-import sys, inspect
-
-
 def get_calling_function():
     """finds the calling function in many decent cases."""
     fr = sys._getframe(1)  # inspect.stack()[1][0]
@@ -192,12 +189,9 @@ def printfile(anything) -> None:
     filename = inspect.getsourcefile(anything)
     try:
         print(open(filename, "r").read())
-    except:
+    except OSError:
         pass
     print(filename)
-
-
-_T = TypeVar("_T")
 
 
 class Namespace(dict[str, _T], Generic[_T]):
@@ -327,7 +321,7 @@ def astronaut() -> Tensor:
 
 try:
     _setup_history()
-except:
+except Exception:
     print("Not setting up history.")
 finally:
     del _setup_history
