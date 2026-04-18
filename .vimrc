@@ -1,7 +1,12 @@
+" Use Vim settings instead of Vi defaults (must be first, changes other options).
+set nocompatible
+
+" Make buffers non-readonly when using vimdiff.
 if &diff
     set noreadonly
 endif
 
+" Automatically reload files changed outside of Vim.
 set autoread
 augroup autoreload
     autocmd!
@@ -10,161 +15,140 @@ augroup autoreload
 augroup END
 set updatetime=500
 
-set showmatch
-"so $HOME/.myfiletypes.vim
-
-let $PAGER=''
-
-" Use Vim settings, rather then Vi settings (much better!).
-" This must be first, because it changes other options as a side effect.
-set nocompatible
-
+" Use a dark background with syntax highlighting in color terminals.
 if &t_Co > 1 && !has("gui_running")
 	set background=dark
 	set notermguicolors
 	syntax enable
-"    set hlsearch
 endif
 
+" Clear the PAGER variable so :! commands don't pipe through a pager.
+let $PAGER=''
 
-" allow backspacing over everything in insert mode
+" Allow backspacing over indentation, line breaks, and insert-mode start.
 set backspace=indent,eol,start
 
-"if has("vms")
-"  set nobackup  " do not keep a backup file, use versions instead
-"else
-"  set backup    " keep a backup file
-"endif
-
-" Required by YouCompleteMe
+" Use UTF-8 encoding.
 set encoding=utf-8
 
-set ai           " autoindent
-set smartindent  " smart indent
-"set cindent      " enable C indent
+" Enable auto-indent and smart indent for new lines.
+set autoindent
+set smartindent
 
-set tabstop=4    " set tab to 4 spaces
-set et           " expandtab: spaces as tabs
-set sw=4         " shiftwidth: number of spaces in a tab
+" Use 4-space-wide tabs expanded to spaces.
+set tabstop=4
+set expandtab
+set shiftwidth=4
 
-"set visualbell   " Silence the bell, use a flash instead
-"set vb t_vb=     " No bell or flash
+" Keep 500 lines of command history.
+set history=500
 
-set history=500  " keep 50 lines of command line history
-set ruler        " show the cursor position all the time
-set incsearch    " do incremental searching
-set showcmd      " Show (partial) command in status line.
-set showmatch    " Show matching brackets.
-set ignorecase   " Do case insensitive matching
-set autowrite    " Automatically save before commands like :next and :make
-"set invhls       " Disable highlighted searching by default. Alt: set hls
+" Show the cursor position in the status line.
+set ruler
 
-"colorscheme desert
-"colorscheme koehler
+" Search incrementally as you type.
+set incsearch
 
-" Don't use Ex mode, use Q for formatting
+" Show partial commands in the status line.
+set showcmd
+
+" Briefly jump to the matching bracket when one is inserted.
+set showmatch
+
+" Use case-insensitive search.
+set ignorecase
+
+" Automatically save before commands like :next and :make.
+set autowrite
+
+" Use Q for formatting instead of Ex mode.
 map Q gq
 
-
-" Only do this part when compiled with support for autocommands.
+" Enable filetype detection, plugins, and language-dependent indenting.
 if has("autocmd")
-  " Enable file type detection.
-  " Use the default filetype settings, so that mail gets 'tw' set to 72,
-  " 'cindent' is on in C files, etc.
-  " Also load indent files, to automatically do language-dependent indenting.
   filetype plugin indent on
 
-  " Put these in an autocmd group, so that we can delete them easily.
   augroup vimrcEx
   au!
 
-  " For all text files set 'textwidth' to 78 characters.
+  " Wrap text files at 78 characters.
   autocmd FileType text setlocal textwidth=78
 
-  " When editing a file, always jump to the last known cursor position.
-  " Don't do it when the position is invalid or when inside an event handler
-  " (happens when dropping a file on gvim).
+  " Jump to the last known cursor position when reopening a file.
   autocmd BufReadPost *
     \ if line("'\"") > 0 && line("'\"") <= line("$") |
     \   exe "normal g`\"" |
     \ endif
 
   augroup END
+endif
 
-"else
-"  set autoindent        " always set autoindenting on
+" Use 4-space indentation for Python files.
+augroup pythonindent
+  autocmd!
+  autocmd FileType python setl sw=4 sts=4 et
+augroup END
 
-endif " has("autocmd")
-
-
-
-
-" Use F1 to toggle highlighting of seach results
+" Toggle search highlighting with F1.
 nnoremap <F1> :set invhls hls?<CR>
-set invhls "set hls
+set invhls
 
+" Toggle line wrapping with F2.
 nnoremap <F2> :set wrap!<CR>
 
-" Set handy commenting feature
-" Perl and shell scripts
-autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F11> :-1/^# /s///<CR>
-autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F12> :-1/^/s//# /<CR>
-" Matlab
-autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F11> :-1/^%/s///<CR>
-autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F12> :-1/^/s//%/<CR>
-" Scheme
-autocmd BufNewFile,BufRead *.sc vmap <F11> :-1/^;/s///<CR>
-autocmd BufNewFile,BufRead *.sc vmap <F12> :-1/^/s//;/<CR>
-" C, C++
-autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F11> :-1/^\/\//s///<CR>
-autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F12> :-1/^/s//\/\//<CR>
+" Toggle block comments with F11 (uncomment) and F12 (comment) per filetype.
+augroup commentkeys
+  autocmd!
+  autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F11> :-1/^# /s///<CR>
+  autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F12> :-1/^/s//# /<CR>
+  autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F11> :-1/^%/s///<CR>
+  autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F12> :-1/^/s//%/<CR>
+  autocmd BufNewFile,BufRead *.sc vmap <F11> :-1/^;/s///<CR>
+  autocmd BufNewFile,BufRead *.sc vmap <F12> :-1/^/s//;/<CR>
+  autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F11> :-1/^\/\//s///<CR>
+  autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F12> :-1/^/s//\/\//<CR>
+augroup END
 
-" Detect Python filetype for scripts using `uv run` shebang
-autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | set filetype=python | endif
-autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F11> :-1/^# /s///<CR> | endif
-autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F12> :-1/^/s//# /<CR> | endif
+" Detect Python filetype and set comment keys for scripts using `uv run` shebang.
+augroup uvrundetect
+  autocmd!
+  autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | set filetype=python | endif
+  autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F11> :-1/^# /s///<CR> | endif
+  autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F12> :-1/^/s//# /<CR> | endif
+augroup END
 
+" Fix terminal escape codes for Shift and Ctrl arrow keys.
+set <S-Up>=O1;2A
+set <S-Down>=O1;2B
+set <S-Right>=O1;2C
+set <S-Left>=O1;2D
+set <C-Right>=O1;5C
+set <C-Left>=O1;5D
 
-"set t_ku=OA
-"set t_kd=OB
-"set t_kr=OC
-"set t_kl=OD
+" Resize the current split by 5 lines/columns with Shift+arrow keys.
+" Direction is position-aware: the border moves in the arrow's direction.
+nnoremap <silent> <S-Up>     :call <SID>Resize('+')<CR>
+nnoremap <silent> <S-Down>   :call <SID>Resize('-')<CR>
+nnoremap <silent> <S-Left>   :call <SID>Resize('<')<CR>
+nnoremap <silent> <S-Right>  :call <SID>Resize('>')<CR>
 
-set <S-Up>=O1;2A
-set <S-Down>=O1;2B
-set <S-Right>=O1;2C
-set <S-Left>=O1;2D
-
-"set <C-Up>=O1;5A
-"set <C-Down>=O1;5B
-set <C-Right>=O1;5C
-set <C-Left>=O1;5D
-
-
-
-" Window resizing mappings
-nnoremap <S-Up>     :normal <c-r>=Resize('+')<cr><cr>
-nnoremap <S-Down>   :normal <c-r>=Resize('-')<cr><cr>
-nnoremap <S-Left>   :normal <c-r>=Resize('<')<cr><cr>
-nnoremap <S-Right>  :normal <c-r>=Resize('>')<cr><cr>
-
-function! Resize(dir)
+function! s:Resize(dir)
     let this = winnr()
 
     if '+' == a:dir || '-' == a:dir
-        execute "normal <c-w>k"
+        wincmd k
         let up = winnr()
         if up != this
-            execute "normal \<c-w>j"
+            wincmd j
             let x = 'bottom'
         else
             let x = 'top'
         endif
     elseif '>' == a:dir || '<' == a:dir
-        execute "normal <c-w>h"
+        wincmd h
         let left = winnr()
         if left != this
-            execute "normal \<c-w>l"
+            wincmd l
             let x = 'right'
         else
             let x = 'left'
@@ -172,27 +156,12 @@ function! Resize(dir)
     endif
 
     if ('+' == a:dir && 'bottom' == x) || ('-' == a:dir && 'top' == x)
-        return "5\<c-v>\<c-w>+"
+        execute "5wincmd +"
     elseif ('-' == a:dir && 'bottom' == x) || ('+' == a:dir && 'top' == x)
-        return "5\<c-v>\<c-w>-"
+        execute "5wincmd -"
     elseif ('<' == a:dir && 'left' == x) || ('>' == a:dir && 'right' == x)
-        return "5\<c-v>\<c-w><"
+        execute "5wincmd <"
     elseif ('>' == a:dir && 'left' == x) || ('<' == a:dir && 'right' == x)
-        return "5\<c-v>\<c-w>>"
-    else
-        echo "oops. check your ~/.vimrc"
-        return ""
+        execute "5wincmd >"
     endif
 endfunction
-
-"" Matlab tie-ins
-"" make sure to run: bash ~/smlv/code/ext/matlab/fabrice/install.sh
-"source $VIMRUNTIME/macros/matchit.vim
-"filetype indent on
-"autocmd BufEnter *.m    compiler mlint
-"" Execute file being edited with F5:
-"autocmd BufNewFile,BufRead *.m map <buffer> <F5> :w<CR>:!matlab -nodesktop -nosplash -r "try,run %,catch ME,disp([ME.identifier ' : ' ME.message]);for i=1:length(ME.stack)-1,disp([ME.stack(i).file ' : ' num2str(ME.stack(i).line)]);end;end;disp('press [enter] to continue');pause;quit;" <CR> <CR>
-
-
-
-au FileType python setl sw=4 sts=4 et

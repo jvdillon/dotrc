@@ -20,18 +20,24 @@
 "   sudo update-alternatives --set vi /usr/bin/vim.basic
 "   sudo update-alternatives --set vim /usr/bin/vim.basic
 
-" Use vim's runtime files for maximum compatibility
+" Load .vimrc and vim's runtime files for maximum compatibility.
 set runtimepath^=~/.vim runtimepath+=~/.vim/after
 let &packpath = &runtimepath
 source ~/.vimrc
 
-" Restore vim defaults that nvim changed
-set laststatus=1          " nvim defaults to 2
-set shortmess-=F          " nvim adds F (hides file info on open)
-set nohidden              " nvim enables hidden
-set mouse=                " nvim defaults to nvi
+" Only show the status line when there are multiple windows.
+set laststatus=1
 
-" Disable TreeSitter and use vim colors
+" Show file info messages when opening a file.
+set shortmess-=F
+
+" Require explicit :hide instead of silently hiding modified buffers.
+set nohidden
+
+" Disable mouse support to match vim's default.
+set mouse=
+
+" Disable TreeSitter highlighting and use vim's built-in colorscheme.
 autocmd BufEnter * lua vim.treesitter.stop()
 if has('nvim-0.10')
   colorscheme vim

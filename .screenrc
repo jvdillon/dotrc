@@ -34,7 +34,7 @@ defflow auto
 # Don't block command output if the terminal stops responding (e.g. ssh timeout).
 nonblock on
 
-# Keep 50000 lines of scrollback history per window.
+# Keep 100000 lines of scrollback history per window.
 defscrollback 100000
 
 # Show a persistent status bar on the last line of the terminal.
