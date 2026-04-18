@@ -1,3 +1,5 @@
+export EMAIL='abc@xyz.com'  # TODO: Add email here!
+
 alias vi='nvim'
 alias vim='nvim'
 alias vimdiff='nvim -d'
@@ -21,129 +23,6 @@ restart-dash-to-panel() {
 
 # sudo apt install lynx pandoc html2text libjs-mathjax
 md () { pandoc -t plain "$1"; }
-
-# Smart SSH with auto ControlMaster and SSHFS setup
-ssh() {
-    local host=""
-    local mount_point=""
-
-    # Find known host in arguments (handles "ssh -v colossus" or "ssh user@colossus")
-    for arg in "$@"; do
-        case "${arg#*@}" in
-            colossus|muthur|raspi|raspizero2w)
-                host="${arg#*@}"
-                break ;;
-        esac
-    done
-
-    [[ -z "$host" ]] && { command ssh "$@"; return; }
-
-    # Don't mount if we're already on the target host (prevents recursive mounts)
-    # Check 1: Hostname match (compare short forms to handle FQDN variations)
-    local this_host=$(hostname)
-    if [[ "${this_host%%.*}" == "${host%%.*}" ]]; then
-        command ssh "$@"
-        return
-    fi
-
-    # Check 2: IP-based detection (handles aliases, alternate names, IPv4/IPv6)
-    local target_ip
-    while IFS= read -r target_ip; do
-        [[ -z "$target_ip" ]] && continue
-        # Loopback addresses (127.x.x.x or ::1) are always us
-        if [[ "$target_ip" == 127.* || "$target_ip" == "::1" ]]; then
-            command ssh "$@"
-            return
-        fi
-        # Check if target IP matches any of our network interfaces
-        if ip addr show 2>/dev/null | grep -q "inet ${target_ip}/\|inet6 ${target_ip}/"; then
-            command ssh "$@"
-            return
-        fi
-    done < <(getent ahosts "$host" 2>/dev/null | awk '{print $1}' | sort -u)
-
-    mount_point=~/"$host"
-
-    # Clean up stale socket if exists but not responding
-    if ls ~/.ssh/master-*@"${host}":* &>/dev/null; then
-        if ! timeout 2 /usr/bin/ssh -O check "$host" &>/dev/null; then
-            echo "Cleaning up stale socket..."
-            timeout 2 /usr/bin/ssh -O exit "$host" 2>/dev/null
-            rm -f ~/.ssh/master-*@"${host}":* 2>/dev/null
-        fi
-    fi
-
-    # Clean up stale mount if sshfs process died but mount remains
-    if grep -q " ${mount_point} fuse.sshfs " /proc/mounts 2>/dev/null; then
-        if ! pgrep -f "sshfs ${host}:" &>/dev/null; then
-            echo "Cleaning up stale mount..."
-            fusermount -uz "$mount_point" 2>/dev/null
-        fi
-    fi
-
-    # Mount if not already mounted (check /proc/mounts to avoid hanging)
-    if ! grep -q " ${mount_point} fuse.sshfs " /proc/mounts 2>/dev/null; then
-        echo "Mounting $host..."
-        mkdir -p "$mount_point" 2>/dev/null
-        timeout 3 sshfs "$host": "$mount_point" -o reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,ControlMaster=no
-    fi
-
-    command ssh "$@"
-}
-
-# Cleanup SSH mounts and control sockets
-ssh-cleanup() {
-    local host="${1:-all}"
-    local hosts_to_clean
-
-    if [ "$host" = "all" ]; then
-        hosts_to_clean=""   # TODO: Add hosts here!
-    else
-        hosts_to_clean="$host"
-    fi
-
-    for h in $hosts_to_clean; do
-        local mount_point=~/"$h"
-
-        # Unmount sshfs - kill process first, then unmount (avoids hanging on broken FUSE)
-        if grep -q " ${mount_point} fuse.sshfs " /proc/mounts 2>/dev/null; then
-            echo "Unmounting $mount_point..."
-            pkill -f "sshfs ${h}:" 2>/dev/null
-            sleep 0.2
-            fusermount -uz "$mount_point" 2>/dev/null
-        fi
-
-        # Close control master - try graceful, force if needed
-        if ls ~/.ssh/master-*@"${h}":* &>/dev/null; then
-            echo "Closing control socket for $h..."
-            timeout 3 /usr/bin/ssh -O exit "$h" 2>/dev/null || rm -f ~/.ssh/master-*@"${h}":*
-        fi
-    done
-}
-
-# Kill all SSH connections
-killssh() {
-    killall ssh sshfs 2>/dev/null
-    ssh-cleanup all
-    # Make sure sshfs is dead
-    pkill -9 -f '^sshfs ' 2>/dev/null
-    echo "Done."
-}
-
-# View remote file with local viewer
-viewremote() {
-    if [ -z "$1" ]; then
-        echo "Usage: viewremote [host:]<path>"
-        return 1
-    fi
-    local remote_path="$1"
-    # Only prepend "colossus:" if not already in "host:path" format
-    if [[ ! "$remote_path" =~ : ]]; then
-        remote_path="colossus:$remote_path"
-    fi
-    local tmpfile="/tmp/viewremote_$(basename "$1")"
-    scp "$remote_path" "$tmpfile" && eog "$tmpfile"
-}
 
 # Helper function to calculate scaled window dimensions
 # Usage: _calc_scaled_geometry <percent> <image_file>
@@ -301,32 +180,6 @@ togif() {
 pipinstall() { python3 -m pip install --user --upgrade --break-system-packages $@; }
 
 httpserver() { python -m http.server 80; }
-
-runtests() {
-  unset tests
-  declare -A tests
-  for f in *_test.py; do
-      python3 $f &
-      tests+=([$f]=$!)
-  done
-  for f in "${!tests[@]}"; do
-      wait ${tests[$f]}
-      if [ $? -eq 0 ]; then
-          tests[$f]="    "
-      else
-          tests[$f]="FAIL"
-      fi
-  done
-  echo -e "\n\n### RESULTS #############\n"
-  for f in "${!tests[@]}"; do
-      echo "${tests[$f]} $f"
-  done
-  echo
-}
-
-
-# --- Miscellaneous
-export EMAIL='abc@xyz.com'  # TODO: Add email here!
 
 # export SDL_AUDIODRIVER=alsa
 # export AUDIODEV=hw:0,0
