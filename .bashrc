@@ -156,3 +156,7 @@ if [ -d $ROCM_HOME ]; then
     export LD_LIBRARY_PATH="${ROCM_HOME}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 fi
 unset ROCM_HOME
+
+if [ -d "$HOME/.npm-global/bin" ]; then
+    export PATH="$HOME/.npm-global/bin${PATH:+:${PATH}}"
+fi

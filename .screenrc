@@ -23,7 +23,11 @@ bind b eval "writebuf" "exec sh -c 'xsel -i -b < /tmp/screen-exchange'"
 termcapinfo xterm|xterms|xs|rxvt ti@:te@
 
 autodetach on
-altscreen on
+# altscreen on conflicts with ti@:te@ (disables mouse scroll in terminal)
+#altscreen on
+# mousetrack on enables mouse support within screen's copy mode (click to
+# position cursor, etc). Not needed if using ti@:te@ for native scrollback.
+#mousetrack on
 defflow auto
 
 # Don't block command output if the terminal stops responding
