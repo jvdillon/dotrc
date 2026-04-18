@@ -1,0 +1,11 @@
+#!/bin/bash
+# uvr - uv run wrapper
+# Uses nearest project with pyproject.toml, falls back to ~/research
+
+dir="$PWD"
+while [[ -n "$dir" ]]; do
+    [[ -f "$dir/pyproject.toml" || -f "$dir/.python-version" ]] && break
+    dir="${dir%/*}"
+done
+
+exec uv --quiet --project "${dir:-$HOME/research}" run --no-sync "$@"
