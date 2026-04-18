@@ -1,43 +1,48 @@
 # http://ubuntuforums.org/showthread.php?t=1385485
 
-# don't display the copyright page
+# Skip the startup copyright notice.
 startup_message off
 
-# Set messages timeout to one second:
+# Dismiss on-screen messages after 1 second.
 msgwait 1
 
-# visable bell
+# Use an audible bell instead of flashing the screen.
 #vbell_msg "beep"
 vbell off
 
-# Instead of Control-a, make the escape/command character be Control-x
+# Use Ctrl-x as the command prefix instead of the default Ctrl-a.
 escape ^Xx
 #escape ~~
 #escape ^Bb
 #escape ^[[
 
-# set copy to be system buffer
+# Bind Ctrl-x b to copy screen's paste buffer to the system clipboard via xsel.
 bind b eval "writebuf" "exec sh -c 'xsel -i -b < /tmp/screen-exchange'"
 
-# tell screen to use terminal emulator buffer
+# Disable alternate screen buffer so output stays in the terminal's native scrollback.
 termcapinfo xterm|xterms|xs|rxvt ti@:te@
 
+# Automatically detach the session when the terminal is closed.
 autodetach on
-# altscreen on conflicts with ti@:te@ (disables mouse scroll in terminal)
+
+# Let full-screen apps (vim, less) use the alternate screen buffer so they clean up on exit.
+# Disabled because it conflicts with ti@:te@ and prevents native mouse scrollback.
 #altscreen on
-# mousetrack on enables mouse support within screen's copy mode (click to
-# position cursor, etc). Not needed if using ti@:te@ for native scrollback.
+
+# Enable mouse support within screen's copy mode (click to position cursor, etc).
+# Not needed if using ti@:te@ for native scrollback.
 #mousetrack on
+
+# Automatically handle flow control (XON/XOFF) for each window.
 defflow auto
 
-# Don't block command output if the terminal stops responding
-# (like if the ssh connection times out for example).
+# Don't block command output if the terminal stops responding (e.g. ssh timeout).
 nonblock on
 
-# Change scrollback to 50000 lines
+# Keep 50000 lines of scrollback history per window.
 defscrollback 50000
 
-# status line at the bottom
+# Show a persistent status bar on the last line of the terminal.
 hardstatus on
 hardstatus alwayslastline
 hardstatus string "%{=b}%{G} Screen(s): %{b}%w %=%{kG}%C%A  %D, %M-%d-%Y "
