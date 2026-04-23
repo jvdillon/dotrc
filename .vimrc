@@ -13,7 +13,7 @@ augroup autoreload
     autocmd CursorHold,CursorHoldI * checktime
     autocmd FocusGained,BufEnter * checktime
 augroup END
-set updatetime=500
+set updatetime=200
 
 " Use a dark background with syntax highlighting in color terminals.
 if &t_Co > 1 && !has("gui_running")
