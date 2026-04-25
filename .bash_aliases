@@ -1,11 +1,18 @@
 export EMAIL='abc@xyz.com'
 
-alias vi='nvim'
-alias vim='nvim'
-alias vimdiff='nvim -d'
-export EDITOR='nvim'
-export VISUAL="$EDITOR"
-export MANPAGER='nvim +Man!'
+# Old way:
+# alias vi='nvim'
+# alias vim='nvim'
+# alias vimdiff='nvim -d'
+# export EDITOR='vim'
+# export VISUAL="$EDITOR"
+# New one-time way: 
+# sudo update-alternatives --set vi /usr/bin/nvim    
+# sudo update-alternatives --set vim /usr/bin/nvim   
+# sudo update-alternatives --set editor /usr/bin/nvim
+# sudo update-alternatives --set vimdiff /usr/libexec/neovim/vimdiff
+
+export MANPAGER='vim +Man!'
 
 # uvr is now in ~/.local/bin/uvr (symlink to ~/research/docs/ubuntu/uvr)
 # To get the function + RESEARCH_ROOT exported, source it:
@@ -323,14 +330,14 @@ alias bc='bc -l'
 #
 # # Create 2x1 PDF:
 # pandoc ~/GB.md -o /tmp/out.pdf -V fontsize=11pt --pdf-engine=xelatex -V geometry:twoside -V geometry:inner=0.5in -V geometry:outer=0.25in -V geometry:top=0.5in -V geometry:bottom=0.5in
-# pdfjam --nup 2x1 --landscape /tmp/out.pdf -o /tmp/out-2up.pdf 
-# 
+# pdfjam --nup 2x1 --landscape /tmp/out.pdf -o /tmp/out-2up.pdf
+#
 # # Preview:
 # evince /tmp/out.pdf
-# 
+#
 # # Print (1-up, long edge):
 # lp -o sides=two-sided-long-edge /tmp/out.pdf
-# 
+#
 # # Print (2-up, short edge, landscape):
 # lp -o number-up=2 -o landscape -o sides=two-sided-short-edge /tmp/out.pdf
 
