@@ -6,9 +6,9 @@ export EMAIL='abc@xyz.com'
 # alias vimdiff='nvim -d'
 # export EDITOR='vim'
 # export VISUAL="$EDITOR"
-# New one-time way: 
-# sudo update-alternatives --set vi /usr/bin/nvim    
-# sudo update-alternatives --set vim /usr/bin/nvim   
+# New one-time way:
+# sudo update-alternatives --set vi /usr/bin/nvim
+# sudo update-alternatives --set vim /usr/bin/nvim
 # sudo update-alternatives --set editor /usr/bin/nvim
 # sudo update-alternatives --set vimdiff /usr/libexec/neovim/vimdiff
 
@@ -137,6 +137,8 @@ md2html_local () {
 }
 
 # pdftk A=contract.pdf B=signature.pdf cat A1-r2 B1 output contract-signed.pdf
+
+alias grepr='grep --exclude-dir={third_party,typings,.venv,__pycache__,.git,node_modules,.mypy_cache,.pytest_cache,.ruff_cache}'
 
 codesearch() {
     local path="$1"
