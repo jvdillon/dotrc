@@ -1,7 +1,7 @@
 # Note: repo overrides are in <repo>/.git/config
 [user]
-    name = Your Name
-    email = abc@xyz.com
+    name = Joshua V. Dillon
+    email = jvdillon@gmail.com
 [core]
     editor = vim
 [diff]
@@ -17,7 +17,7 @@
 [alias]
     # "What will I push?"
     # git config --global alias.pending 'log @{u}..HEAD --stat'
-	pending = log @{u}..HEAD --stat
+	pending = log @{u}..HEAD --stat --abbrev-commit
     p = pending
 
     # Compares: HEAD (last commit) vs working directory
@@ -37,6 +37,11 @@
 
     # git config --global alias.ac '!git add -A && git commit -m'
 	ac = !git add -A && git commit -m
+	au = !git add -A && git commit --amend --no-edit
+	af = "!f() { git add -A && git commit --fixup=$1 && GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash origin/main; }; f"
+
+    # Example: push up to this commit to the main branch on origin
+    # git push origin 415b11e0:main
 
     unstage = reset HEAD --
     last = log -1 HEAD
@@ -89,3 +94,7 @@
 	required = true
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
+[pull]
+    # git pull --rebase
+    # git config --global pull.rebase true
+	rebase = true
