@@ -49,7 +49,8 @@
     # https://gist.github.com/robmiller/6018582
 
     # mergemain = !git fetch && git merge origin/main && git pull
-    mergemain = !git switch main && git pull && git switch - && git merge main
+    # mergemain = !git switch main && git pull && git switch - && git merge main
+    mergemain = git fetch origin main && git merge origin/main
 
     # whereami = "!git rev-parse --abbrev-ref HEAD"
     whereami = branch --show-current
