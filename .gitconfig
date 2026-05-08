@@ -144,9 +144,9 @@
     # rebase = true
 
 
-# tail -44 ~/.gitconfig
+# tail -40 ~/.gitconfig
 
-# --- Workflow 101 --------------------------------------------------------------
+# --- Workflow Example ----------------------------------------------------------
 #
 # 1. Make a branch from main.
 #
@@ -154,20 +154,20 @@
 #      # git fetch origin && git switch -c bob/my-thing origin/main && git push -u origin HEAD
 #
 #    Got a collision? Examine then re-push forcefully.
+#
 #      git log origin/bob/my-thing --oneline -5  # What happened?
 #      git push -u origin HEAD --force-with-lease
 #
 #   If branch exists and you want to nuke it:
+#
 #      git ls-remote --exit-code origin bob/my-thing && git push origin --delete bob/my-thing
 #
 #   Note: --force-with-lease refuses if the remote moved since your last fetch,
-#   so it can't silently clobber someone else's push.
-#
+#         so it can't silently clobber someone else's push.
 #
 # 2. Make edits as usual.
 # 
 #      git add . && git commit -m "more stuff" && git push
-# 
 # 
 # 3. Catch up with main before opening PR.
 #
@@ -175,6 +175,7 @@
 #      # git fetch origin && git merge origin/main
 #
 #    If conflicts: edit files to fix, then:
+#
 #      git add -A && git commit && git push
 #
 # 
@@ -182,11 +183,8 @@
 #
 #      gh pr create --fill --web
 #
-#
 # 5. Cleanup.
 #
 #      git deletebranch bob/my-thing
 #      # git switch main && git branch -D bob/my-thing && { git push origin --delete bob/my-thing 2>/dev/null || true; }
 #      # git pull --ff-only  # sync local main with remote
-#
-# -------------------------------------------------------------------------------
