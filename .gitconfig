@@ -15,6 +15,21 @@
 [push]
     autoSetupRemote = true
 [alias]
+
+    # --- Workflow: Step 1 ----------------------------------------------------------
+    # New branch from origin/main, pushed and tracked.
+    newbranch = "!f() { git fetch origin && git switch -c \"$1\" origin/main && git push -u origin HEAD; }; f"
+
+
+    # --- Workflow: Step 2 ----------------------------------------------------------
+    # Make edits.
+    # git config --global alias.ac '!git add -A && git commit -m'
+	ac = !git add -A && git commit -m
+	au = !git add -A && git commit --amend --no-edit
+
+	af = "!f() { git add -A && git commit --fixup=\"$1\"; }; f"
+	rpf = !GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash origin/main && git push --force-with-lease
+
     # "What will I push?"
     # git config --global alias.pending 'log @{u}..HEAD --stat'
 	pending = !echo '== unpushed ==' && git log @{u}..HEAD --stat --abbrev-commit && echo '== pushed ==' && git log origin/main..@{u} --stat --abbrev-commit
@@ -22,40 +37,36 @@
 
     # Compares: HEAD (last commit) vs working directory
     # Shows: All uncommitted changes (staged + unstaged)
-    nothave = status -uall --short
-    missing = nothave
+    missing = status -uall --short
     m = missing
     # diff --stat HEAD
     # nothave = status --short
+
+    unstage = reset HEAD --
+    last = log -1 HEAD
 
     # "What will I push?" ("lite")
     # git config --global alias.changes 'diff --stat @{u}..HEAD'
 	changes = diff --stat origin/main...HEAD
 
+
+    # --- Workflow: Step 3 ----------------------------------------------------------
+    # Catch up with origin/main, then push.
+    # mergemain = !git fetch origin && git merge origin/main
+    mergemain = "!f() { git fetch origin || exit 1; zombies=$(git cherry origin/main 2>/dev/null | grep -c '^-' || true); if [ \"$zombies\" -gt 0 ]; then cur=$(git symbolic-ref --short HEAD); echo \"WARNING: $zombies commit(s) on $cur are already in origin/main under different SHAs.\"; echo \"PR was likely squash- or rebase-merged. Suggested cleanup:\"; echo \"  git checkout main && git merge --ff-only origin/main && git branch -D $cur\"; printf 'Continue merge anyway? [y/N] '; read ans; case \"$ans\" in y|Y) ;; *) exit 1 ;; esac; fi; git merge origin/main; }; f"
+
+
+    # --- Workflow: Step 5 ----------------------------------------------------------
+    # Cleanup branch (delete local + remote, return to main).
+    deletebranch = "!f() { git switch main && git branch -D \"$1\" && { git push origin --delete \"$1\" 2>/dev/null || true; } && git pull --ff-only; }; f"
+
     # git config --global alias.expunge-unreachable-now '!git reflog expire --expire-unreachable=now --all && git gc --prune=now'
 	expunge-unreachable-now = !git reflog expire --expire-unreachable=now --all && git gc --prune=now
 
-    # git config --global alias.ac '!git add -A && git commit -m'
-	ac = !git add -A && git commit -m
-	au = !git add -A && git commit --amend --no-edit
-	af = "!f() { git add -A && git commit --fixup=\"$1\"; }; f"
-	rpf = !GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash origin/main && git push --force-with-lease
-
-    # Example: push up to this commit to the main branch on origin
-    # git push origin 415b11e0:main
-
-    unstage = reset HEAD --
-    last = log -1 HEAD
-
     # https://gist.github.com/robmiller/6018582
 
-    # mergemain = !git fetch && git merge origin/main && git pull
-    # mergemain = !git switch main && git pull && git switch - && git merge main
-    # Fetches origin, warns if any commit on the current branch is already in
-    # origin/main under a different SHA (PR was squash- or rebase-merged on
-    # GitHub -> local commits are zombies). Otherwise runs `git merge origin/main`.
-    mergemain = "!f() { git fetch origin || exit 1; zombies=$(git cherry origin/main 2>/dev/null | grep -c '^-' || true); if [ \"$zombies\" -gt 0 ]; then cur=$(git symbolic-ref --short HEAD); echo \"WARNING: $zombies commit(s) on $cur are already in origin/main under different SHAs.\"; echo \"PR was likely squash- or rebase-merged. Suggested cleanup:\"; echo \"  git checkout main && git merge --ff-only origin/main && git branch -D $cur\"; printf 'Continue merge anyway? [y/N] '; read ans; case \"$ans\" in y|Y) ;; *) exit 1 ;; esac; fi; git merge origin/main; }; f"
 
+    # --- Miscellaneous -------------------------------------------------------------
     # whereami = "!git rev-parse --abbrev-ref HEAD"
     whereami = branch --show-current
 
@@ -63,29 +74,6 @@
     # are on the current branch.
     diffall = difftool origin/main...
 
-    # Find the commits that were introduced by a merge
-    merge-log = "!git log `git merge-span .. $1`"
-    # Show the changes that were introduced by a merge
-    merge-diff = "!git diff `git merge-span ... $1`"
-    # As above, but in your difftool
-    merge-difftool = "!git difftool `git merge-span ... $1`"
-
-    # Interactively rebase all the commits on the current branch
-    rebase-branch = "!git rebase -i `git merge-base main HEAD`"
-
-    # Mark a file as "assume unchanged", which means that Git will treat it
-    # as though there are no changes to it even if there are. Useful for
-    # temporary changes to tracked files
-    assume = update-index --assume-unchanged
-    # Reverse the above
-    unassume = update-index --no-assume-unchanged
-    # Show the files that are currently assume-unchanged
-    assumed = "!git ls-files -v | grep ^h | cut -c 3-"
-
-    # Checkout our version of a file and add it
-    ours = "!f() { git checkout --ours $@ && git add $@; }; f"
-    # Checkout their version of a file and add it
-    theirs = "!f() { git checkout --theirs $@ && git add $@; }; f"
 [credential "https://github.com"]
     helper =
     helper = !/usr/bin/gh auth git-credential
@@ -182,7 +170,7 @@
 # 
 # 3. Catch up with main before opening PR.
 #
-#      git fetch origin && git merge origin/main && git push
+#      git fetch origin && git merge origin/main
 #
 #    If conflicts: edit files to fix, then:
 #      git add -A && git commit && git push
