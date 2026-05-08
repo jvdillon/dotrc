@@ -17,7 +17,7 @@
 [alias]
     # "What will I push?"
     # git config --global alias.pending 'log @{u}..HEAD --stat'
-	pending = log @{u}..HEAD --stat --abbrev-commit
+	pending = !echo '== unpushed ==' && git log @{u}..HEAD --stat --abbrev-commit && echo '== pushed ==' && git log origin/main..@{u} --stat --abbrev-commit
     p = pending
 
     # Compares: HEAD (last commit) vs working directory
@@ -30,7 +30,7 @@
 
     # "What will I push?" ("lite")
     # git config --global alias.changes 'diff --stat @{u}..HEAD'
-	changes = diff --stat @{u}..HEAD
+	changes = diff --stat origin/main...HEAD
 
     # git config --global alias.expunge-unreachable-now '!git reflog expire --expire-unreachable=now --all && git gc --prune=now'
 	expunge-unreachable-now = !git reflog expire --expire-unreachable=now --all && git gc --prune=now
@@ -38,7 +38,8 @@
     # git config --global alias.ac '!git add -A && git commit -m'
 	ac = !git add -A && git commit -m
 	au = !git add -A && git commit --amend --no-edit
-	af = "!f() { git add -A && git commit --fixup=$1 && GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash origin/main; }; f"
+	af = "!f() { git add -A && git commit --fixup=\"$1\"; }; f"
+	rpf = !GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash origin/main && git push --force-with-lease
 
     # Example: push up to this commit to the main branch on origin
     # git push origin 415b11e0:main
@@ -50,7 +51,10 @@
 
     # mergemain = !git fetch && git merge origin/main && git pull
     # mergemain = !git switch main && git pull && git switch - && git merge main
-    mergemain = !git fetch origin main && git merge origin/main
+    # Fetches origin, warns if any commit on the current branch is already in
+    # origin/main under a different SHA (PR was squash- or rebase-merged on
+    # GitHub -> local commits are zombies). Otherwise runs `git merge origin/main`.
+    mergemain = "!f() { git fetch origin || exit 1; zombies=$(git cherry origin/main 2>/dev/null | grep -c '^-' || true); if [ \"$zombies\" -gt 0 ]; then cur=$(git symbolic-ref --short HEAD); echo \"WARNING: $zombies commit(s) on $cur are already in origin/main under different SHAs.\"; echo \"PR was likely squash- or rebase-merged. Suggested cleanup:\"; echo \"  git checkout main && git merge --ff-only origin/main && git branch -D $cur\"; printf 'Continue merge anyway? [y/N] '; read ans; case \"$ans\" in y|Y) ;; *) exit 1 ;; esac; fi; git merge origin/main; }; f"
 
     # whereami = "!git rev-parse --abbrev-ref HEAD"
     whereami = branch --show-current
@@ -98,4 +102,6 @@
 [pull]
     # git pull --rebase
     # git config --global pull.rebase true
-	rebase = true
+    # rebase = true
+    # Refuse to auto-merge or auto-rebase on pull. Forces an explicit choice.
+    ff = only
