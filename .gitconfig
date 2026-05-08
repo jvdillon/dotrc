@@ -100,8 +100,100 @@
 	clean = git-lfs clean -- %f
 	smudge = git-lfs smudge -- %f
 [pull]
-    # git pull --rebase
+    # Refuse to auto-merge or auto-rebase on pull. Forces an explicit choice.
+    #
+    # We use ff-only to make the safe behavior the default, the destructive
+    # behavior explicit.
+    #
+    # Now git pull refuses non-fast-forward by default. When you genuinely want
+    # a merge or rebase, you ask for it explicitly:
+    #   git pull --no-ff
+    #       Switches off the ff-only restriction; creates a merge commit. Use
+    #       when local and remote diverged and you want to integrate via merge
+    #       (preserves both branches in history). With pull.ff = only set
+    #       globally, plain git pull would refuse on    divergence; --no-ff
+    #       says "yes, actually merge them."
+    #   git pull --rebase
+    #       Abandons merge entirely. Replays your local commits on top of the
+    #       fetched tip, producing linear history with no merge commit. The
+    #       pull.ff setting is irrelevant because no merge happens.
+    #
+    #  Example
+    #
+    #    Local has commit X on top of an old base; remote has commit Y on top
+    #    of the same base. After git fetch:
+    #
+    #             X (local)
+    #            /
+    #      *----*
+    #            \
+    #             Y (remote)
+    #
+    # Three integrations:
+    #
+    #   1. `git pull` (with pull.ff = only) → refuses. "Not a fast-forward."
+    #   2. `git pull --no-ff` → creates merge:
+    #
+    #              X-----.
+    #             /       \
+    #       *----*         M (HEAD)
+    #             \       /
+    #              Y-----'
+    #
+    #   3. `git pull --rebase` → replays X onto Y:
+    #
+    #       *----*----Y----X' (HEAD)
+    #
+    # Pick based on what history shape you want.
+    #
+    # Most teams prefer --rebase for feature branches (clean linear history)
+    # and merges for integrating completed branches into main.
+    # git config --global pull.ff only
+    ff = only
+
+    # Alternatively,
     # git config --global pull.rebase true
     # rebase = true
-    # Refuse to auto-merge or auto-rebase on pull. Forces an explicit choice.
-    ff = only
+
+
+
+# --- Workflow 101 --------------------------------------------------------------
+#
+# 1. Make a branch from main.
+# 
+#      git fetch origin && git switch -c bob/my-thing origin/main && git push -u origin HEAD
+#
+#    Got a collision? Examine then re-push forcefully.
+#      git log origin/bob/my-thing --oneline -5  # What happened?
+#      git push -u origin HEAD --force-with-lease
+#
+#   If branch exists and you want to nuke it:
+#      git ls-remote --exit-code origin bob/my-thing && git push origin --delete bob/my-thing
+#
+#   Note: --force-with-lease refuses if the remote moved since your last fetch,
+#   so it can't silently clobber someone else's push.
+#
+#
+# 2. Make edits as usual.
+# 
+#      git add . && git commit -m "more stuff" && git push
+# 
+# 
+# 3. Catch up with main before opening PR.
+#
+#      git fetch origin && git merge origin/main && git push
+#
+#    If conflicts: edit files to fix, then:
+#      git add -A && git commit && git push
+#
+# 
+# 4. Open the PR.
+#
+#     gh pr create --fill --web
+#
+# 5. Cleanup.
+#
+#     git switch main && git branch -D bob/my-thing && { git push origin --delete bob/my-thing 2>/dev/null || true; }
+#     git pull --ff-only  # sync local main with remote
+#
+# -------------------------------------------------------------------------------
