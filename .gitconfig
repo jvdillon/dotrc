@@ -144,13 +144,14 @@
     # rebase = true
 
 
-# tail -41 ~/.gitconfig
+# tail -44 ~/.gitconfig
 
 # --- Workflow 101 --------------------------------------------------------------
 #
 # 1. Make a branch from main.
-# 
-#      git fetch origin && git switch -c bob/my-thing origin/main && git push -u origin HEAD
+#
+#      git newbranch bob/my-thing
+#      # git fetch origin && git switch -c bob/my-thing origin/main && git push -u origin HEAD
 #
 #    Got a collision? Examine then re-push forcefully.
 #      git log origin/bob/my-thing --oneline -5  # What happened?
@@ -170,7 +171,8 @@
 # 
 # 3. Catch up with main before opening PR.
 #
-#      git fetch origin && git merge origin/main
+#      git mergemain
+#      # git fetch origin && git merge origin/main
 #
 #    If conflicts: edit files to fix, then:
 #      git add -A && git commit && git push
@@ -178,12 +180,13 @@
 # 
 # 4. Open the PR.
 #
-#     gh pr create --fill --web
+#      gh pr create --fill --web
 #
 #
 # 5. Cleanup.
 #
-#     git switch main && git branch -D bob/my-thing && { git push origin --delete bob/my-thing 2>/dev/null || true; }
-#     git pull --ff-only  # sync local main with remote
+#      git deletebranch bob/my-thing
+#      # git switch main && git branch -D bob/my-thing && { git push origin --delete bob/my-thing 2>/dev/null || true; }
+#      # git pull --ff-only  # sync local main with remote
 #
 # -------------------------------------------------------------------------------
