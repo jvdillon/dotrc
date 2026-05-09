@@ -6,6 +6,10 @@ if &diff
     set noreadonly
 endif
 
+" In diff mode, start at the top of each window (overrides BufReadPost
+" cursor-restore, which would otherwise jump to the persisted '" mark).
+autocmd VimEnter * if &diff | windo normal! gg | endif
+
 " Automatically reload files changed outside of Vim.
 set autoread
 augroup autoreload
