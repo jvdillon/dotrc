@@ -6,10 +6,6 @@ if &diff
     set noreadonly
 endif
 
-" In diff mode, start at the top of each window (overrides BufReadPost
-" cursor-restore, which would otherwise jump to the persisted '" mark).
-autocmd VimEnter * if &diff | windo normal! gg | endif
-
 " Automatically reload files changed outside of Vim.
 set autoread
 augroup autoreload
@@ -79,8 +75,9 @@ if has("autocmd")
     autocmd FileType text setlocal textwidth=78
 
     " Jump to the last known cursor position when reopening a file.
+    " Skip in diff mode so vimdiff/git difftool start at the first hunk.
     autocmd BufReadPost *
-        \ if line("'\"") > 0 && line("'\"") <= line("$") |
+        \ if !&diff && line("'\"") > 0 && line("'\"") <= line("$") |
         \   exe "normal g`\"" |
         \ endif
 
