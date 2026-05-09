@@ -28,7 +28,11 @@
 
     # --- Workflow: Step 1 ----------------------------------------------------------
     # New branch from the integration branch, pushed and tracked.
-    new-branch = "!f() { git fetch origin && git switch -c \"$1\" origin/HEAD && git push -u origin HEAD; }; f"
+    new-branch = "!f() { \
+      git fetch origin && \
+      git switch -c \"$1\" origin/HEAD && \
+      git push -u origin HEAD; \
+    }; f"
     nb = new-branch
 
     # - Clean branch already equal to integration branch: resets harmlessly/no-op.
@@ -40,8 +44,15 @@
     # - Feature branch before PR merge: refuses.
     refresh-branch = "!f() { \
       git fetch origin || exit 1; \
-      test -z \"$(git status --porcelain)\" || { echo 'Refusing: working tree is not clean'; exit 1; }; \
-      git cherry origin/HEAD | grep -q '^+' && { echo 'Refusing: branch has commits not in origin/HEAD'; git cherry origin/HEAD; exit 1; }; \
+      if [ -n \"$(git status --porcelain)\" ]; then \
+        echo 'Refusing: working tree is not clean'; \
+        exit 1; \
+      fi; \
+      if git cherry origin/HEAD | grep -q '^+'; then \
+        echo 'Refusing: branch has commits not in origin/HEAD'; \
+        git cherry origin/HEAD; \
+        exit 1; \
+      fi; \
       git reset --hard origin/HEAD; \
     }; f"
     rb = refresh-branch
@@ -88,7 +99,15 @@
 
     # --- Workflow: Step 5 ----------------------------------------------------------
     # Cleanup branch (delete local + remote, return to integration branch).
-    delete-branch = "!f() { base=$(git symbolic-ref --short refs/remotes/origin/HEAD); git switch \"${base#origin/}\" && git branch -D \"$1\" && { git push origin --delete \"$1\" 2>/dev/null || true; } && git pull --ff-only; }; f"
+    delete-branch = "!f() { \
+      base=$(git symbolic-ref --short refs/remotes/origin/HEAD); \
+      git switch \"${base#origin/}\" && \
+      git branch -D \"$1\" && \
+      { git push origin --delete \"$1\" 2>/dev/null || true; } && \
+      git pull --ff-only; \
+    }; f"
+    # The `|| true` on the remote delete is intentional: GH PR auto-delete
+    # often removes the remote branch before we get here, and that's fine.
     db = delete-branch
 
     # DANGEROUS: destroys reflog entries for unreachable commits. No undo.
@@ -102,33 +121,44 @@
     # Full state of the branch: pushed/unpushed commits + staged/unstaged/untracked
     # files. Sections progress oldest -> newest.
     pending = "!f() { \
+      show() { \
+        [ -n \"$2\" ] || return 0; \
+        n=$((28 - ${#1} - 4)); [ $n -lt 1 ] && n=1; \
+        printf '== %s %.*s\\n%s\\n\\n' \"$1\" \"$n\" '==============================' \"$2\"; \
+      }; \
+      log_range() { \
+        git --no-pager log --color=always --stat --abbrev-commit \"$1\"; \
+      }; \
       if u=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then \
-        echo '== pushed =='; \
-        git --no-pager log origin/HEAD..\"$u\" --stat --abbrev-commit; \
-        echo '== unpushed =='; \
-        git --no-pager log \"$u\"..HEAD --stat --abbrev-commit; \
+        unpushed_title='unpushed'; \
+        unpushed_range=\"$u..HEAD\"; \
+        show 'pushed' \"$(log_range \"origin/HEAD..$u\")\"; \
       else \
-        echo '== unpushed (no upstream) =='; \
-        git --no-pager log origin/HEAD..HEAD --stat --abbrev-commit; \
+        unpushed_title='unpushed (no upstream)'; \
+        unpushed_range='origin/HEAD..HEAD'; \
       fi; \
-      echo '== staged =='; \
-      git --no-pager diff --cached --stat; \
-      echo '== unstaged =='; \
-      git --no-pager diff --stat; \
-      echo '== untracked =='; \
-      git ls-files --others --exclude-standard; \
+      show \"$unpushed_title\" \"$(log_range \"$unpushed_range\")\"; \
+      show 'staged'    \"$(git --no-pager diff --color=always --cached --stat)\"; \
+      show 'unstaged'  \"$(git --no-pager diff --color=always --stat)\"; \
+      show 'untracked' \"$(git ls-files --others --exclude-standard)\"; \
     }; f"
     p = pending
 
     # Shows: all uncommitted work -- staged, unstaged, and untracked files.
     missing = status -uall --short
-    nothave = missing
     m = missing
+    # `nothave` is an intentional second name -- sometimes "what don't I have
+    # committed?" is the natural phrasing.
+    nothave = missing
 
+    # Unstage path(s): `git unstage <path>` -- inverse of `git add`.
     unstage = reset HEAD --
+
+    # Show the most recent commit (full message + diff).
     last = log -1 HEAD
 
-    # "What will I push?" ("lite") -- diff vs integration branch, all branch commits.
+    # Lite version of `pending`: just the cumulative diffstat of this branch
+    # vs the integration branch. Answers "what will my PR change?"
     changes = diff --stat origin/HEAD...HEAD
 
     whereami = branch --show-current
@@ -168,7 +198,7 @@
     #       Switches off the ff-only restriction; creates a merge commit. Use
     #       when local and remote diverged and you want to integrate via merge
     #       (preserves both branches in history). With pull.ff = only set
-    #       globally, plain git pull would refuse on    divergence; --no-ff
+    #       globally, plain git pull would refuse on divergence; --no-ff
     #       says "yes, actually merge them."
     #   git pull --rebase
     #       Abandons merge entirely. Replays your local commits on top of the
@@ -213,6 +243,7 @@
     # rebase = true
 
 
+# Marker: workflow example is the last 48 lines. Quick recap:
 # tail -48 ~/.gitconfig
 
 # --- Workflow Example ----------------------------------------------------------
