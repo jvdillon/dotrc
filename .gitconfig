@@ -1,4 +1,14 @@
 # Note: repo overrides are in <repo>/.git/config
+#
+# Workflow assumptions baked into the aliases below:
+#
+#   1. Single integration branch per repo (origin/HEAD). Doesn't fit gitflow
+#      (main + develop) or stacked PRs onto peer feature branches.
+#
+#   2. origin/HEAD is set on every clone. If it isn't, aliases that resolve
+#      it (especially delete-branch) will fail. One-time fix per repo:
+#
+#          git remote set-head origin -a
 [user]
     name = Your Name
     email = your@email.com
@@ -17,33 +27,34 @@
 [alias]
 
     # --- Workflow: Step 1 ----------------------------------------------------------
-    # New branch from origin/main, pushed and tracked.
-    new-branch = "!f() { git fetch origin && git switch -c \"$1\" origin/main && git push -u origin HEAD; }; f"
+    # New branch from the integration branch, pushed and tracked.
+    new-branch = "!f() { git fetch origin && git switch -c \"$1\" origin/HEAD && git push -u origin HEAD; }; f"
     nb = new-branch
 
-    # - Clean branch already equal to main: resets harmlessly/no-op.
-    # - Branch after GH squash merge: resets to origin/main.
+    # - Clean branch already equal to integration branch: resets harmlessly/no-op.
+    # - Single-commit branch after GH squash merge: resets (patch-id matches).
+    # - Multi-commit branch after GH squash merge: REFUSES (per-commit patch-ids
+    #   don't match the single squash commit). Use `git delete-branch` instead.
     # - Uncommitted edits: refuses.
-    # - New local commits not in main: refuses.
+    # - New local commits not in integration branch: refuses.
     # - Feature branch before PR merge: refuses.
     refresh-branch = "!f() { \
       git fetch origin || exit 1; \
       test -z \"$(git status --porcelain)\" || { echo 'Refusing: working tree is not clean'; exit 1; }; \
-      git cherry origin/main | grep -q '^+' && { echo 'Refusing: branch has commits not in origin/main'; git cherry origin/main; exit 1; }; \
-      git reset --hard origin/main; \
+      git cherry origin/HEAD | grep -q '^+' && { echo 'Refusing: branch has commits not in origin/HEAD'; git cherry origin/HEAD; exit 1; }; \
+      git reset --hard origin/HEAD; \
     }; f"
     rb = refresh-branch
 
 
     # --- Workflow: Step 2 ----------------------------------------------------------
     # Make edits.
-    # git config --global alias.ac '!git add -A && git commit -m'
-	add-commit = !git add -A && git commit -m
+    add-commit = !git add -A && git commit -m
     ac = add-commit
 
-	amend = !git commit --amend --no-edit
+    amend = commit --amend --no-edit
 
-	add-amend = !git add -A && git amend
+    add-amend = !git add -A && git amend
     aa = add-amend
 
     fixup = "!f() { git commit --fixup=\"${1:-HEAD}\"; }; f"
@@ -53,7 +64,7 @@
     af = add-fixup
 
 
-    squash = "!base=$(git merge-base HEAD \"$(git base-branch)\") && GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash \"$base\""
+    squash = !GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash $(git merge-base HEAD origin/HEAD)
     s = squash
     # Note:
     # - Squash before first push?       git push
@@ -62,32 +73,40 @@
 
     # --- Workflow: Step 3 ----------------------------------------------------------
     # On private branch, before PR / while developing.
-    rebase-main = !git fetch origin && git rebase origin/main
+    rebase-main = !git fetch origin && git rebase origin/HEAD
 
     # On shared feature branch -- preserves existing commit hashes for collaborators.
-    merge-main = !git fetch origin && git merge origin/main
+    merge-main = !git fetch origin && git merge origin/HEAD
 
 
     # --- Workflow: Step 5 ----------------------------------------------------------
-    # Cleanup branch (delete local + remote, return to main).
-    delete-branch = "!f() { git switch main && git branch -D \"$1\" && { git push origin --delete \"$1\" 2>/dev/null || true; } && git pull --ff-only; }; f"
+    # Cleanup branch (delete local + remote, return to integration branch).
+    delete-branch = "!f() { base=$(git symbolic-ref --short refs/remotes/origin/HEAD); git switch \"${base#origin/}\" && git branch -D \"$1\" && { git push origin --delete \"$1\" 2>/dev/null || true; } && git pull --ff-only; }; f"
 
-    # git config --global alias.expunge-unreachable-now '!git reflog expire --expire-unreachable=now --all && git gc --prune=now'
-	expunge-unreachable-now = !git reflog expire --expire-unreachable=now --all && git gc --prune=now
-
-    # https://gist.github.com/robmiller/6018582
+    # DANGEROUS: destroys reflog entries for unreachable commits. No undo.
+    # Useful to expunge unreachable commits (e.g. after rewriting history,
+    # purging a leaked secret, or shrinking a bloated repo).
+    # Run only when you're certain you don't need to recover anything.
+    nuke-reflog = !git reflog expire --expire-unreachable=now --all && git gc --prune=now
 
 
     # --- What's going on? ----------------------------------------------------------
-    # "What will I push?"
-    base-branch = !git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || echo origin/main
-    bb = base-branch
-
-    pending = "!b=$(git base-branch); echo '== unpushed ==' && git log \"$b\"..HEAD --stat --abbrev-commit && echo '== pushed ==' && git log origin/main..\"$b\" --stat --abbrev-commit"
+    # "What will I push?" -- splits commits ahead of integration branch into
+    # unpushed (only on HEAD) vs already-pushed (on remote tracking ref).
+    pending = "!f() { \
+      if u=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then \
+        echo '== unpushed =='; \
+        git log \"$u\"..HEAD --stat --abbrev-commit; \
+        echo '== pushed =='; \
+        git log origin/HEAD..\"$u\" --stat --abbrev-commit; \
+      else \
+        echo '== unpushed (no upstream) =='; \
+        git log origin/HEAD..HEAD --stat --abbrev-commit; \
+      fi; \
+    }; f"
     p = pending
 
-    # Compares: HEAD (last commit) vs working directory
-    # Shows: All uncommitted changes (staged + unstaged)
+    # Shows: all uncommitted work -- staged, unstaged, and untracked files.
     missing = status -uall --short
     nothave = missing
     m = missing
@@ -95,16 +114,14 @@
     unstage = reset HEAD --
     last = log -1 HEAD
 
-    # "What will I push?" ("lite")
-    # git config --global alias.changes 'diff --stat @{u}..HEAD'
-	changes = "!git diff --stat \"$(git base-branch)\"...HEAD"
+    # "What will I push?" ("lite") -- diff vs integration branch, all branch commits.
+    changes = diff --stat origin/HEAD...HEAD
 
-    # whereami = "!git rev-parse --abbrev-ref HEAD"
     whereami = branch --show-current
 
     # Fire up your difftool (e.g. Kaleidescope) with all the changes that
     # are on the current branch.
-    diffall = difftool origin/main...
+    diffall = difftool origin/HEAD...
 
 [credential "https://github.com"]
     helper =
@@ -113,12 +130,18 @@
     helper =
     helper = !/usr/bin/gh auth git-credential
 [credential]
+    # Persistent plaintext store at ~/.git-credentials. GitHub uses gh above;
+    # this covers any other remotes without re-auth prompts.
+    # Guard the file: chmod 600 ~/.git-credentials  (verify: ls -l ~/.git-credentials)
     helper = store
+    # Safer alternative: in-memory cache (8h), no plaintext on disk. Costs a
+    # re-auth prompt every 8h for non-GitHub remotes.
+    # helper = cache --timeout=28800
 [filter "lfs"]
-	process = git-lfs filter-process
-	required = true
-	clean = git-lfs clean -- %f
-	smudge = git-lfs smudge -- %f
+    process = git-lfs filter-process
+    required = true
+    clean = git-lfs clean -- %f
+    smudge = git-lfs smudge -- %f
 [pull]
     # Refuse to auto-merge or auto-rebase on pull. Forces an explicit choice.
     #
@@ -176,14 +199,17 @@
     # rebase = true
 
 
-# tail -44 ~/.gitconfig
+# tail -48 ~/.gitconfig
 
 # --- Workflow Example ----------------------------------------------------------
 #
-# 1. Make a branch from main.
+# Throughout: "the integration branch" = origin/HEAD (origin/main, origin/master,
+# etc.). Set per-repo with: git remote set-head origin -a
+#
+# 1. Make a branch from the integration branch.
 #
 #      git new-branch bob/my-thing
-#      # git fetch origin && git switch -c bob/my-thing origin/main && git push -u origin HEAD
+#      # git fetch origin && git switch -c bob/my-thing origin/HEAD && git push -u origin HEAD
 #
 #    Got a collision? Examine then re-push forcefully.
 #
@@ -201,10 +227,10 @@
 # 
 #      git add . && git commit -m "more stuff" && git push
 # 
-# 3. Catch up with main before opening PR.
+# 3. Catch up with the integration branch before opening PR.
 #
 #      git rebase-main
-#      # git fetch origin && git rebase origin/main
+#      # git fetch origin && git rebase origin/HEAD
 #
 #    If conflicts: edit files to fix, then:
 #
@@ -220,5 +246,6 @@
 # 5. Cleanup.
 #
 #      git delete-branch bob/my-thing
-#      # git switch main && git branch -D bob/my-thing && { git push origin --delete bob/my-thing 2>/dev/null || true; }
-#      # git pull --ff-only  # sync local main with remote
+#      # base=$(git symbolic-ref --short refs/remotes/origin/HEAD)  # usually "origin/main"
+#      # git switch "${base#origin/}" && git branch -D bob/my-thing && { git push origin --delete bob/my-thing 2>/dev/null || true; }
+#      # git pull --ff-only  # sync local integration branch with remote
