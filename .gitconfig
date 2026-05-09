@@ -179,20 +179,19 @@
     # Pass a path: `git check src/`. Defaults to `.` (whole repo).
 
     # Each phase takes an optional path: `git check-lint src/`. Default `.`.
-    check-lint = "!f() { \
+    lint = "!f() { \
       p=\"${1:-.}\"; \
       uv --quiet --project \"$p\" run --frozen ruff check \"$p\" ; \
       uv --quiet --project \"$p\" run --frozen ruff format \"$p\"; \
     }; f"
-    lint = check-lint
 
-    check-types = "!f() { \
+    typecheck = "!f() { \
       p=\"${1:-.}\"; \
       uv --quiet --project \"$p\" run --frozen ty check \"$p\" ; \
       uv --quiet --project \"$p\" run --frozen basedpyright --threads=6 \"$p\"; \
     }; f"
 
-    check-tests = "!f() { \
+    test = "!f() { \
       p=\"${1:-.}\"; \
       uv --quiet --project \"$p\" run --frozen pytest \"$p\" -n 4; \
     }; f"
@@ -201,9 +200,9 @@
     # (you see every issue, not just the first).
     check = "!f() { \
       p=\"${1:-.}\"; \
-      git check-lint \"$p\" ; \
-      git check-types \"$p\" ; \
-      git check-tests \"$p\"; \
+      git lint \"$p\" ; \
+      git typecheck \"$p\" ; \
+      git test \"$p\"; \
     }; f"
 
 [credential "https://github.com"]
