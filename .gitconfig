@@ -181,19 +181,20 @@
     # Each phase takes an optional path: `git check-lint src/`. Default `.`.
     check-lint = "!f() { \
       p=\"${1:-.}\"; \
-      uv --quiet --project \"$p\" run --no-sync ruff check \"$p\" ; \
-      uv --quiet --project \"$p\" run --no-sync ruff format \"$p\"; \
+      uv --quiet --project \"$p\" run --frozen ruff check \"$p\" ; \
+      uv --quiet --project \"$p\" run --frozen ruff format \"$p\"; \
     }; f"
+    lint = check-lint
 
     check-types = "!f() { \
       p=\"${1:-.}\"; \
-      uv --quiet --project \"$p\" run --no-sync ty check \"$p\" ; \
-      uv --quiet --project \"$p\" run --no-sync basedpyright --threads=6 \"$p\"; \
+      uv --quiet --project \"$p\" run --frozen ty check \"$p\" ; \
+      uv --quiet --project \"$p\" run --frozen basedpyright --threads=6 \"$p\"; \
     }; f"
 
     check-tests = "!f() { \
       p=\"${1:-.}\"; \
-      uv --quiet --project \"$p\" run --no-sync pytest \"$p\" -n 4; \
+      uv --quiet --project \"$p\" run --frozen pytest \"$p\" -n 4; \
     }; f"
 
     # Full pipeline. Uses `;` so all phases run even if earlier ones fail
