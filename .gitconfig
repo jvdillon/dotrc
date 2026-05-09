@@ -211,7 +211,7 @@
 
     # Full pipeline. Uses `;` so all phases run even if earlier ones fail
     # (you see every issue, not just the first).
-    check = "!f() { \
+    precommit = "!f() { \
       p=\"${1:-.}\"; \
       git lint \"$p\" ; \
       git typecheck \"$p\" ; \
