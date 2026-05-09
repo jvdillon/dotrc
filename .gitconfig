@@ -23,6 +23,9 @@
 [submodule]
     recurse = true
 [push]
+    # First push of a new branch sets upstream automatically. Belt-and-suspenders
+    # with `new-branch` (which already passes -u), but covers branches created
+    # by other means (e.g. `git switch -c foo` then `git push`).
     autoSetupRemote = true
 [alias]
 
@@ -99,6 +102,8 @@
 
     # --- Workflow: Step 5 ----------------------------------------------------------
     # Cleanup branch (delete local + remote, return to integration branch).
+    # The `|| true` on the remote delete is intentional: GH PR auto-delete
+    # often removes the remote branch before we get here, and that's fine.
     delete-branch = "!f() { \
       base=$(git symbolic-ref --short refs/remotes/origin/HEAD); \
       git switch \"${base#origin/}\" && \
@@ -106,8 +111,6 @@
       { git push origin --delete \"$1\" 2>/dev/null || true; } && \
       git pull --ff-only; \
     }; f"
-    # The `|| true` on the remote delete is intentional: GH PR auto-delete
-    # often removes the remote branch before we get here, and that's fine.
     db = delete-branch
 
     # DANGEROUS: destroys reflog entries for unreachable commits. No undo.
@@ -161,11 +164,46 @@
     # vs the integration branch. Answers "what will my PR change?"
     changes = diff --stat origin/HEAD...HEAD
 
+    # Print the current branch name (handy in scripts and prompts).
     whereami = branch --show-current
 
     # Fire up your difftool (e.g. Kaleidescope) with all the changes that
     # are on the current branch.
     diffall = difftool origin/HEAD...
+
+
+    # --- Quality checks ------------------------------------------------------------
+    # Full lint / format / typecheck / test pipeline. Uses `;` so all phases
+    # run even if earlier ones fail (you see every issue, not just the first).
+    # Wrapped in a subshell so `time` reports total wall-clock for the lot.
+    # Pass a path: `git check src/`. Defaults to `.` (whole repo).
+
+    # Each phase takes an optional path: `git check-lint src/`. Default `.`.
+    check-lint = "!f() { \
+      p=\"${1:-.}\"; \
+      uv --quiet --project \"$p\" run --no-sync ruff check \"$p\" ; \
+      uv --quiet --project \"$p\" run --no-sync ruff format \"$p\"; \
+    }; f"
+
+    check-types = "!f() { \
+      p=\"${1:-.}\"; \
+      uv --quiet --project \"$p\" run --no-sync ty check \"$p\" ; \
+      uv --quiet --project \"$p\" run --no-sync basedpyright --threads=6 \"$p\"; \
+    }; f"
+
+    check-tests = "!f() { \
+      p=\"${1:-.}\"; \
+      uv --quiet --project \"$p\" run --no-sync pytest \"$p\" -n 4; \
+    }; f"
+
+    # Full pipeline. Uses `;` so all phases run even if earlier ones fail
+    # (you see every issue, not just the first).
+    check = "!f() { \
+      p=\"${1:-.}\"; \
+      git check-lint \"$p\" ; \
+      git check-types \"$p\" ; \
+      git check-tests \"$p\"; \
+    }; f"
 
 [credential "https://github.com"]
     helper =
