@@ -6,7 +6,7 @@
 #      (main + develop) or stacked PRs onto peer feature branches.
 #
 #   2. origin/HEAD is set on every clone. If it isn't, aliases that resolve
-#      it (especially delete-branch) will fail. One-time fix per repo:
+#      it will fail. One-time fix per repo:
 #
 #          git remote set-head origin -a
 [user]
@@ -74,14 +74,22 @@
     # --- Workflow: Step 3 ----------------------------------------------------------
     # On private branch, before PR / while developing.
     rebase-main = !git fetch origin && git rebase origin/HEAD
+    rbm = rebase-main
 
     # On shared feature branch -- preserves existing commit hashes for collaborators.
     merge-main = !git fetch origin && git merge origin/HEAD
+    mm = merge-main
+
+
+    # --- Workflow: Step 4 ----------------------------------------------------------
+    # Open the PR (no alias -- use gh):
+    #     gh pr create --fill --web
 
 
     # --- Workflow: Step 5 ----------------------------------------------------------
     # Cleanup branch (delete local + remote, return to integration branch).
     delete-branch = "!f() { base=$(git symbolic-ref --short refs/remotes/origin/HEAD); git switch \"${base#origin/}\" && git branch -D \"$1\" && { git push origin --delete \"$1\" 2>/dev/null || true; } && git pull --ff-only; }; f"
+    db = delete-branch
 
     # DANGEROUS: destroys reflog entries for unreachable commits. No undo.
     # Useful to expunge unreachable commits (e.g. after rewriting history,
@@ -91,18 +99,24 @@
 
 
     # --- What's going on? ----------------------------------------------------------
-    # "What will I push?" -- splits commits ahead of integration branch into
-    # unpushed (only on HEAD) vs already-pushed (on remote tracking ref).
+    # Full state of the branch: pushed/unpushed commits + staged/unstaged/untracked
+    # files. Sections progress oldest -> newest.
     pending = "!f() { \
       if u=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then \
-        echo '== unpushed =='; \
-        git log \"$u\"..HEAD --stat --abbrev-commit; \
         echo '== pushed =='; \
-        git log origin/HEAD..\"$u\" --stat --abbrev-commit; \
+        git --no-pager log origin/HEAD..\"$u\" --stat --abbrev-commit; \
+        echo '== unpushed =='; \
+        git --no-pager log \"$u\"..HEAD --stat --abbrev-commit; \
       else \
         echo '== unpushed (no upstream) =='; \
-        git log origin/HEAD..HEAD --stat --abbrev-commit; \
+        git --no-pager log origin/HEAD..HEAD --stat --abbrev-commit; \
       fi; \
+      echo '== staged =='; \
+      git --no-pager diff --cached --stat; \
+      echo '== unstaged =='; \
+      git --no-pager diff --stat; \
+      echo '== untracked =='; \
+      git ls-files --others --exclude-standard; \
     }; f"
     p = pending
 
@@ -224,9 +238,9 @@
 #         so it can't silently clobber someone else's push.
 #
 # 2. Make edits as usual.
-# 
+#
 #      git add . && git commit -m "more stuff" && git push
-# 
+#
 # 3. Catch up with the integration branch before opening PR.
 #
 #      git rebase-main
@@ -238,7 +252,7 @@
 #      git rebase --continue
 #      git push --force-with-lease  # if branch was already pushed
 #
-# 
+#
 # 4. Open the PR.
 #
 #      gh pr create --fill --web
