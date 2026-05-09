@@ -70,10 +70,15 @@
 
     # Print an AI-generated summary of a commit vs its parent. Default: HEAD.
     # Requires `sagent` on PATH.
-    ai-summary = "!f() { \
-      p=\"${1:-HEAD}\"; \
-      echo \"Without saying anything else or any other output, briefly summarize commit '$p' vs its parent and print a <60 char summary followed by terse bulleted list. Do not list individual file changes unless essential for clarity. Do not list line counts. Avoid overly specific code references. No unicode glyphs. Do not prefix the summary with 'Summary', 'Overall', etc. Be very concise!\" | sagent --model claude-haiku-4-5; \
-    }; f"
+	ai-summary = "!f() { \
+	    if [ -z \"$1\" ]; then \
+	        target=\"the staged changes (run: git diff --cached)\"; \
+	    else \
+	        target=\"commit '$1' vs its parent\"; \
+	    fi; \
+	    prompt=\"Without saying anything else or any other output, briefly summarize ${target} and print a <60 char summary followed by terse bulleted list. Do not list individual file changes unless essential for clarity. Do not list line counts. Avoid overly specific code references. No unicode glyphs. Do not prefix the summary with 'Summary', 'Overall', etc. Be very concise!\"; \
+	    echo \"$prompt\" | sagent --model claude-haiku-4-5; \
+	}; f"
     ais = ai-summary
 
     add-amend = !git add -A && git amend
