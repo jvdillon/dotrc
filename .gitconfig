@@ -1,7 +1,7 @@
 # Note: repo overrides are in <repo>/.git/config
 [user]
-    name = Joshua V. Dillon
-    email = jvdillon@gmail.com
+    name = Your Name
+    email = your@email.com
 [core]
     editor = vim
 [diff]
@@ -18,62 +18,59 @@
 
     # --- Workflow: Step 1 ----------------------------------------------------------
     # New branch from origin/main, pushed and tracked.
-    newbranch = "!f() { git fetch origin && git switch -c \"$1\" origin/main && git push -u origin HEAD; }; f"
+    new-branch = "!f() { git fetch origin && git switch -c \"$1\" origin/main && git push -u origin HEAD; }; f"
+    nb = new-branch
+
+    # - Clean branch already equal to main: resets harmlessly/no-op.
+    # - Branch after GH squash merge: resets to origin/main.
+    # - Uncommitted edits: refuses.
+    # - New local commits not in main: refuses.
+    # - Feature branch before PR merge: refuses.
+    refresh-branch = "!f() { \
+      git fetch origin || exit 1; \
+      test -z \"$(git status --porcelain)\" || { echo 'Refusing: working tree is not clean'; exit 1; }; \
+      git cherry origin/main | grep -q '^+' && { echo 'Refusing: branch has commits not in origin/main'; git cherry origin/main; exit 1; }; \
+      git reset --hard origin/main; \
+    }; f"
+    rb = refresh-branch
 
 
     # --- Workflow: Step 2 ----------------------------------------------------------
     # Make edits.
     # git config --global alias.ac '!git add -A && git commit -m'
-	add-and-commit = !git add -A && git commit -m
-    ac = add-and-commit
+	add-commit = !git add -A && git commit -m
+    ac = add-commit
 
-	add-and-amend = !git add -A && git commit --amend --no-edit
-    aa = add-and-update-head
+	amend = !git commit --amend --no-edit
+
+	add-amend = !git add -A && git amend
+    aa = add-amend
 
     fixup = "!f() { git commit --fixup=\"${1:-HEAD}\"; }; f"
     f = fixup
 
-    add-and-fixup = !git add -A && git fixup
-    af = add-and-fixup
+    add-fixup = !git add -A && git fixup
+    af = add-fixup
 
-    base-branch = !git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || echo origin/main
+
     squash = "!base=$(git merge-base HEAD \"$(git base-branch)\") && GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash \"$base\""
     s = squash
-
-    # Squash before first push: git push
-    # Squash after branch was pushed: git push --force-with-lease
-
-    update-main = "!git fetch origin && git rebase origin/main"
-
-    # "What will I push?"
-    # git config --global alias.pending 'log @{u}..HEAD --stat'
-    pending = "!b=$(git base-branch); echo '== unpushed ==' && git log \"$b\"..HEAD --stat --abbrev-commit && echo '== pushed ==' && git log origin/main..\"$b\" --stat --abbrev-commit"
-    p = pending
-
-    # Compares: HEAD (last commit) vs working directory
-    # Shows: All uncommitted changes (staged + unstaged)
-    missing = status -uall --short
-    m = missing
-    # diff --stat HEAD
-    # nothave = status --short
-
-    unstage = reset HEAD --
-    last = log -1 HEAD
-
-    # "What will I push?" ("lite")
-    # git config --global alias.changes 'diff --stat @{u}..HEAD'
-	changes = diff --stat origin/main...HEAD
+    # Note:
+    # - Squash before first push?       git push
+    # - Squash after branch was pushed? git push --force-with-lease
 
 
     # --- Workflow: Step 3 ----------------------------------------------------------
-    # Catch up with origin/main, then push.
-    # mergemain = !git fetch origin && git merge origin/main
-    mergemain = "!f() { git fetch origin || exit 1; zombies=$(git cherry origin/main 2>/dev/null | grep -c '^-' || true); if [ \"$zombies\" -gt 0 ]; then cur=$(git symbolic-ref --short HEAD); echo \"WARNING: $zombies commit(s) on $cur are already in origin/main under different SHAs.\"; echo \"PR was likely squash- or rebase-merged. Suggested cleanup:\"; echo \"  git checkout main && git merge --ff-only origin/main && git branch -D $cur\"; printf 'Continue merge anyway? [y/N] '; read ans; case \"$ans\" in y|Y) ;; *) exit 1 ;; esac; fi; git merge origin/main; }; f"
+    # On private branch, before PR / while developing.
+    rebase-main = !git fetch origin && git rebase origin/main
+
+    # On shared feature branch -- preserves existing commit hashes for collaborators.
+    merge-main = !git fetch origin && git merge origin/main
 
 
     # --- Workflow: Step 5 ----------------------------------------------------------
     # Cleanup branch (delete local + remote, return to main).
-    deletebranch = "!f() { git switch main && git branch -D \"$1\" && { git push origin --delete \"$1\" 2>/dev/null || true; } && git pull --ff-only; }; f"
+    delete-branch = "!f() { git switch main && git branch -D \"$1\" && { git push origin --delete \"$1\" 2>/dev/null || true; } && git pull --ff-only; }; f"
 
     # git config --global alias.expunge-unreachable-now '!git reflog expire --expire-unreachable=now --all && git gc --prune=now'
 	expunge-unreachable-now = !git reflog expire --expire-unreachable=now --all && git gc --prune=now
@@ -81,7 +78,27 @@
     # https://gist.github.com/robmiller/6018582
 
 
-    # --- Miscellaneous -------------------------------------------------------------
+    # --- What's going on? ----------------------------------------------------------
+    # "What will I push?"
+    base-branch = !git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || echo origin/main
+    bb = base-branch
+
+    pending = "!b=$(git base-branch); echo '== unpushed ==' && git log \"$b\"..HEAD --stat --abbrev-commit && echo '== pushed ==' && git log origin/main..\"$b\" --stat --abbrev-commit"
+    p = pending
+
+    # Compares: HEAD (last commit) vs working directory
+    # Shows: All uncommitted changes (staged + unstaged)
+    missing = status -uall --short
+    nothave = missing
+    m = missing
+
+    unstage = reset HEAD --
+    last = log -1 HEAD
+
+    # "What will I push?" ("lite")
+    # git config --global alias.changes 'diff --stat @{u}..HEAD'
+	changes = "!git diff --stat \"$(git base-branch)\"...HEAD"
+
     # whereami = "!git rev-parse --abbrev-ref HEAD"
     whereami = branch --show-current
 
@@ -159,13 +176,13 @@
     # rebase = true
 
 
-# tail -40 ~/.gitconfig
+# tail -44 ~/.gitconfig
 
 # --- Workflow Example ----------------------------------------------------------
 #
 # 1. Make a branch from main.
 #
-#      git newbranch bob/my-thing
+#      git new-branch bob/my-thing
 #      # git fetch origin && git switch -c bob/my-thing origin/main && git push -u origin HEAD
 #
 #    Got a collision? Examine then re-push forcefully.
@@ -186,12 +203,14 @@
 # 
 # 3. Catch up with main before opening PR.
 #
-#      git mergemain
-#      # git fetch origin && git merge origin/main
+#      git rebase-main
+#      # git fetch origin && git rebase origin/main
 #
 #    If conflicts: edit files to fix, then:
 #
-#      git add -A && git commit && git push
+#      git add -A
+#      git rebase --continue
+#      git push --force-with-lease  # if branch was already pushed
 #
 # 
 # 4. Open the PR.
@@ -200,6 +219,6 @@
 #
 # 5. Cleanup.
 #
-#      git deletebranch bob/my-thing
+#      git delete-branch bob/my-thing
 #      # git switch main && git branch -D bob/my-thing && { git push origin --delete bob/my-thing 2>/dev/null || true; }
 #      # git pull --ff-only  # sync local main with remote
