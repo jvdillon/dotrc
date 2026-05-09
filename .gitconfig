@@ -24,15 +24,30 @@
     # --- Workflow: Step 2 ----------------------------------------------------------
     # Make edits.
     # git config --global alias.ac '!git add -A && git commit -m'
-	ac = !git add -A && git commit -m
-	au = !git add -A && git commit --amend --no-edit
+	add-and-commit = !git add -A && git commit -m
+    ac = add-and-commit
 
-	af = "!f() { git add -A && git commit --fixup=\"$1\"; }; f"
-	rpf = !GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash origin/main && git push --force-with-lease
+	add-and-amend = !git add -A && git commit --amend --no-edit
+    aa = add-and-update-head
+
+    fixup = "!f() { git commit --fixup=\"${1:-HEAD}\"; }; f"
+    f = fixup
+
+    add-and-fixup = !git add -A && git fixup
+    af = add-and-fixup
+
+    base-branch = !git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || echo origin/main
+    squash = "!base=$(git merge-base HEAD \"$(git base-branch)\") && GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash \"$base\""
+    s = squash
+
+    # Squash before first push: git push
+    # Squash after branch was pushed: git push --force-with-lease
+
+    update-main = "!git fetch origin && git rebase origin/main"
 
     # "What will I push?"
     # git config --global alias.pending 'log @{u}..HEAD --stat'
-	pending = !echo '== unpushed ==' && git log @{u}..HEAD --stat --abbrev-commit && echo '== pushed ==' && git log origin/main..@{u} --stat --abbrev-commit
+    pending = "!b=$(git base-branch); echo '== unpushed ==' && git log \"$b\"..HEAD --stat --abbrev-commit && echo '== pushed ==' && git log origin/main..\"$b\" --stat --abbrev-commit"
     p = pending
 
     # Compares: HEAD (last commit) vs working directory
