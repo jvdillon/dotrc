@@ -16,9 +16,10 @@ HISTCONTROL=ignoredups:ignorespace
 # append to the history file, don't overwrite it
 shopt -s histappend
 
-# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+# HISTFILESIZE : Max number of lines contained in the history file.
+# HISTSIZE     : Number of commands to remember in the command history.
 HISTSIZE=10000
-HISTFILESIZE=20000
+HISTFILESIZE=50000
 
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
