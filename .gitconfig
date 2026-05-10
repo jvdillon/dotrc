@@ -152,6 +152,7 @@
     # Full state of the branch: pushed/unpushed commits + staged/unstaged/untracked
     # files. Sections progress oldest -> newest.
     pending = "!f() { \
+      [ -n \"$GIT_PREFIX\" ] && cd \"$GIT_PREFIX\"; \
       export COLUMNS=\"${COLUMNS:-$(tput cols 2>/dev/null || echo 200)}\"; \
       show() { \
         [ -n \"$2\" ] || return 0; \
