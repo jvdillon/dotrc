@@ -63,7 +63,22 @@
 
     # --- Workflow: Step 2 ----------------------------------------------------------
     # Make edits.
-    add-commit = "!f() { git add -A && git commit -m \"${1:-$(git ais)}\"; }; f"
+    # Default -m to `git ais` when no message flag is given.
+    ai-commit = "!f() { \
+        case \" $* \" in \
+            *' -m'*|*' --message'*) \
+                git commit \"$@\" \
+                ;; \
+            *) \
+                git commit -m \"$(git ais)\" \"$@\" \
+                ;; \
+        esac; \
+    }; f"
+    c = ai-commit
+
+    a = add -A
+
+    add-commit = !git a && git c
     ac = add-commit
 
     amend = commit --amend --no-edit
@@ -159,7 +174,7 @@
       show 'staged'    \"$(git -c diff.statNameWidth=$COLUMNS --no-pager diff --color=always --cached --stat \"$@\")\"; \
       show 'unstaged'  \"$(git -c diff.statNameWidth=$COLUMNS --no-pager diff --color=always --stat \"$@\")\"; \
       show 'untracked' \"$(git ls-files --others --exclude-standard)\"; \
-    }; f \"$@\""
+    }; f"
     p = pending
 
     # Shows: all uncommitted work -- staged, unstaged, and untracked files.
