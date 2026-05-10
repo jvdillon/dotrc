@@ -63,7 +63,7 @@
 
     # --- Workflow: Step 2 ----------------------------------------------------------
     # Make edits.
-    add-commit = !git add -A && git commit -m
+    add-commit = "!f() { git add -A && git commit -m \"${1:-$(git ais)}\"; }; f"
     ac = add-commit
 
     amend = commit --amend --no-edit
@@ -137,27 +137,29 @@
     # Full state of the branch: pushed/unpushed commits + staged/unstaged/untracked
     # files. Sections progress oldest -> newest.
     pending = "!f() { \
+      export COLUMNS=\"${COLUMNS:-$(tput cols 2>/dev/null || echo 200)}\"; \
       show() { \
         [ -n \"$2\" ] || return 0; \
         n=$((28 - ${#1} - 4)); [ $n -lt 1 ] && n=1; \
         printf '== %s %.*s\\n%s\\n\\n' \"$1\" \"$n\" '==============================' \"$2\"; \
       }; \
       log_range() { \
-        git --no-pager log --color=always --stat --abbrev-commit \"$1\"; \
+        range=\"$1\"; shift; \
+        git -c diff.statNameWidth=$COLUMNS --no-pager log --color=always --stat --abbrev-commit \"$range\" \"$@\"; \
       }; \
       if u=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then \
         unpushed_title='unpushed'; \
         unpushed_range=\"$u..HEAD\"; \
-        show 'pushed' \"$(log_range \"origin/HEAD..$u\")\"; \
+        show 'pushed' \"$(log_range \"origin/HEAD..$u\" \"$@\")\"; \
       else \
         unpushed_title='unpushed (no upstream)'; \
         unpushed_range='origin/HEAD..HEAD'; \
       fi; \
-      show \"$unpushed_title\" \"$(log_range \"$unpushed_range\")\"; \
-      show 'staged'    \"$(git --no-pager diff --color=always --cached --stat)\"; \
-      show 'unstaged'  \"$(git --no-pager diff --color=always --stat)\"; \
+      show \"$unpushed_title\" \"$(log_range \"$unpushed_range\" \"$@\")\"; \
+      show 'staged'    \"$(git -c diff.statNameWidth=$COLUMNS --no-pager diff --color=always --cached --stat \"$@\")\"; \
+      show 'unstaged'  \"$(git -c diff.statNameWidth=$COLUMNS --no-pager diff --color=always --stat \"$@\")\"; \
       show 'untracked' \"$(git ls-files --others --exclude-standard)\"; \
-    }; f"
+    }; f \"$@\""
     p = pending
 
     # Shows: all uncommitted work -- staged, unstaged, and untracked files.
@@ -186,10 +188,37 @@
 
 
     # --- Quality checks ------------------------------------------------------------
-    # Full lint / format / typecheck / test pipeline. Uses `;` so all phases
-    # run even if earlier ones fail (you see every issue, not just the first).
-    # Wrapped in a subshell so `time` reports total wall-clock for the lot.
-    # Pass a path: `git check src/`. Defaults to `.` (whole repo).
+    # `lint` and `typecheck` operate on a NUL-separated file list from
+    # `changed-files`. Default scope: branch diff (origin/HEAD...HEAD)
+    # plus staged, unstaged, and untracked. Optional commit arg narrows
+    # scope to just the files touched by that commit.
+    #
+    #   git lint                  # everything this branch touches
+    #   git lint HEAD             # files in the tip commit
+    #   git lint abc123           # files in commit abc123
+    #
+    # `test` still takes an optional path (changed-file selection for
+    # pytest is a footgun -- tests for changed source aren't trivially
+    # derivable from filenames).
+
+    # Emit NUL-separated paths. No arg = branch diff + dirty + untracked.
+    # With commit = just the files touched by that commit. `--diff-filter=d`
+    # drops deletions so the output is always existing-on-disk paths.
+    changed-files = "!f() { \
+      root=$(git rev-parse --show-toplevel) || return 1; \
+      cd \"$root\" || return 1; \
+      if [ -n \"$1\" ]; then \
+        git diff-tree --no-commit-id --name-only --diff-filter=d -z -r \"$1\"; \
+      else \
+        { \
+          git diff --name-only --diff-filter=d -z origin/HEAD...HEAD ; \
+          git diff --name-only --diff-filter=d -z --cached ; \
+          git diff --name-only --diff-filter=d -z ; \
+          git ls-files -o --exclude-standard -z ; \
+        } | sort -zu ; \
+      fi ; \
+    }; f"
+    cf = changed-files
 
     # Each phase takes an optional path: `git check-lint src/`. Default `.`.
     lint = "!f() { \
@@ -216,6 +245,19 @@
       git lint \"$p\" ; \
       git typecheck \"$p\" ; \
       git test \"$p\"; \
+    }; f"
+
+    uncommit = "!f() { \
+      c=\"$1\"; \
+      if [ -z \"$c\" ]; then echo 'usage: git uncommit <commit>' >&2; return 2; fi; \
+      if [ -n \"$(git status --porcelain)\" ]; then echo 'refusing: working tree is not clean' >&2; return 2; fi; \
+      branch=$(git symbolic-ref --short HEAD 2>/dev/null) || { echo 'refusing: not on a branch (detached HEAD)' >&2; return 2; }; \
+      p=\"$(mktemp -t git-uncommit.XXXXXX.patch)\" || return 1; \
+      git show --format= \"$c\" > \"$p\" || { echo \"failed to write patch: $p\" >&2; return 1; }; \
+      git rebase --onto \"$c^\" \"$c\" HEAD || { echo \"rebase failed; patch kept at $p\" >&2; return 1; }; \
+      git apply \"$p\" || { echo \"apply failed; patch kept at $p\" >&2; return 1; }; \
+      rm -f \"$p\"; \
+      git switch -C \"$branch\"; \
     }; f"
 
 [credential "https://github.com"]
@@ -296,6 +338,14 @@
 
 # Marker: workflow example is the last 48 lines. Quick recap:
 # tail -48 ~/.gitconfig
+
+# Suppose you have A---B---C and you want to uncommit B.
+# Then:
+# git cherry-pick B                             
+# git rebase -i B~                              
+# drop B, keep the new cherry-pick at the end 
+# git reset HEAD^                               
+
 
 # --- Workflow Example ----------------------------------------------------------
 #

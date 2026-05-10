@@ -31,6 +31,68 @@ restart-dash-to-panel() {
     gnome-extensions enable dash-to-panel@jderose9.github.com
 }
 
+
+# sudo apt install fd-find  (Ubuntu installs binary as fdfind)
+#
+# fdfind primer (find equivalent on right):
+#   fdfind                            # find . ! -path '*/.*'                                 # all files; skips hidden + gitignored
+#   fdfind foo                        # find . -name '*foo*'                                  # basename match (fd: regex; find: glob)
+#   fdfind -g 'foo*'                  # find . -name 'foo*'                                   # glob mode instead of regex
+#   fdfind -e py                      # find . -name '*.py'                                   # extension filter
+#   fdfind -e py -e pyi               # find . \( -name '*.py' -o -name '*.pyi' \)            # multiple extensions (OR)
+#   fdfind '\.py$' src/ lib/          # find src/ lib/ -name '*.py'                           # multiple search roots
+#   fdfind -E build -E '*.min.js'     # find . -not -path '*/build/*' -not -name '*.min.js'   # exclude (repeatable, glob)
+#   fdfind -p 'src/.*\.py$'           # find . -path '*/src/*.py'                             # match full path, not basename
+#   fdfind -t f                       # find . -type f                                        # files only (-t d / -t l)
+#   fdfind -H                         # find . (descends into .hidden too)                    # include hidden dotfiles
+#   fdfind -I                         # find . (descends into .venv/.git/etc.)                # ignore .gitignore rules
+#   fdfind -HI                        # find . (no exclusions at all)                         # both: walk everything
+#   fdfind -d 2                       # find . -maxdepth 2                                    # max recursion depth
+#   fdfind -S +1M                     # find . -size +1M                                      # size filter
+#   fdfind --changed-within 1d        # find . -mtime -1                                      # mtime within duration
+#   fdfind -L                         # find -L .                                             # follow symlinks
+#   fdfind -e py -x wc -l             # find . -name '*.py' -exec wc -l {} \;                 # exec PER file
+#   fdfind -e py -X wc -l             # find . -name '*.py' -print0 | xargs -0 wc -l          # exec BATCHED (xargs-style)
+#   fdfind -0 | xargs -0 grep foo     # find . -print0 | xargs -0 grep foo                    # NUL-delimited output
+#   fdfind -s 'Foo'                   # find . -name '*Foo*'                                  # force case-sensitive
+
+# sudo apt install ripgrep  (binary is rg)
+#
+# rg primer (grep equivalent on right):
+#   rg foo                            # grep -r foo .                                         # recursive; skips hidden + gitignored
+#   rg foo -t py                      # grep -r --include='*.py' foo .                        # type filter (rg --type-list)
+#   rg foo -g '*.py'                  # grep -r --include='*.py' foo .                        # include glob (repeatable)
+#   rg foo -g '!build'                # grep -r --exclude-dir=build foo .                     # exclude glob (! prefix; repeatable)
+#   rg foo src/ lib/                  # grep -r foo src/ lib/                                 # multiple search roots
+#   rg foo -i                         # grep -ri foo .                                        # case-insensitive (smart-case is default)
+#   rg foo -F                         # grep -rF foo .                                        # fixed string (no regex)
+#   rg foo -w                         # grep -rw foo .                                        # whole-word match
+#   rg -l foo                         # grep -rl foo .                                        # list files with match
+#   rg -L foo                         # grep -rL foo .                                        # list files WITHOUT match
+#   rg --files                        # find . -type f                                        # list files only (no search)
+#   rg foo -.                         # grep -r foo .                                         # include hidden + .gitignored
+#   rg foo -A 3 -B 1                  # grep -r -A 3 -B 1 foo .                               # context: 3 after, 1 before
+#   rg foo -c                         # grep -rc foo .                                        # match count per file
+#   rg --count-matches foo            # grep -roc foo .                                       # total match count (not file count)
+#   rg -e foo -e bar                  # grep -re foo -e bar .                                 # multiple patterns (OR)
+#   rg foo -0 | xargs -0 ...          # grep -rlZ foo .                                       # NUL-delimited file list
+
+alias rgc='rg --color=always --no-heading -Hn'
+
+# count: line counts via fd | wc -l. --sort=ARGS overrides default sort flags (e.g. --sort='-k1 -n'); --nosort skips sorting.
+count() {
+  local sort_cmd=(sort -k2) fd_args=() a
+  for a; do
+    case "$a" in
+      --nosort) sort_cmd=(cat) ;;
+      --sort=*) read -ra sort_cmd <<< "sort ${a#--sort=}" ;;
+      *)        fd_args+=("$a") ;;
+    esac
+  done
+  fdfind "${fd_args[@]}" -X wc -l | "${sort_cmd[@]}" | awk '$2=="total"{next} {print; n+=$1} END{print n, "total"}'
+}
+
+
 # sudo apt install lynx pandoc html2text libjs-mathjax
 md () { pandoc -t plain "$1"; }
 
@@ -138,7 +200,8 @@ md2html_local () {
 
 # pdftk A=contract.pdf B=signature.pdf cat A1-r2 B1 output contract-signed.pdf
 
-alias grepr='grep --exclude-dir={third_party,typings,.venv,__pycache__,.git,node_modules,.mypy_cache,.pytest_cache,.ruff_cache}'
+alias grepr='grep --exclude-dir={third_party,typings,.venv,__pycache__,.git,node_modules,.mypy_cache,.pytest_cache,.ruff_cache} -r'
+alias greprpy='grepr --include="*.py"'
 
 codesearch() {
     local path="$1"
