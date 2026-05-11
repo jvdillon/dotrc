@@ -191,6 +191,14 @@
     # Show the most recent commit (full message + diff).
     last = log -1 HEAD
 
+    # Recent commits with diffstat. Pass --since=... and pathspec as usual:
+    #   git recent --since="6 hours ago" -- .
+    recent = log --no-merges --stat
+
+    # Replacement for the deprecated `git whatchanged`: log + name-status,
+    # no merges. Cleaner than --raw (drops mode/hash columns).
+    wc = log --no-merges --name-status --pretty=format:'%C(yellow)%h%Creset %C(cyan)%an%Creset %C(green)(%ar)%Creset %s%n'
+
     # Lite version of `pending`: just the cumulative diffstat of this branch
     # vs the integration branch. Answers "what will my PR change?"
     changes = diff --stat origin/HEAD...HEAD
