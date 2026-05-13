@@ -353,11 +353,11 @@
     # Most teams prefer --rebase for feature branches (clean linear history)
     # and merges for integrating completed branches into main.
     # git config --global pull.ff only
-    ff = only
+    # ff = only
 
     # Alternatively,
     # git config --global pull.rebase true
-    # rebase = true
+    rebase = true
 
 
 # Marker: workflow example is the last 48 lines. Quick recap:

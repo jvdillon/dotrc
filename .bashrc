@@ -11,15 +11,18 @@ esac
 # don't put duplicate lines or lines starting with space in the history.
 # ... or force ignoredups and ignorespace
 # See bash(1) for more options
-HISTCONTROL=ignoredups:ignorespace
+HISTCONTROL=ignoredups:ignorespace:erasedups
 
 # append to the history file, don't overwrite it
 shopt -s histappend
 
 # HISTFILESIZE : Max number of lines contained in the history file.
 # HISTSIZE     : Number of commands to remember in the command history.
-HISTSIZE=10000
-HISTFILESIZE=50000
+HISTSIZE=100000
+HISTFILESIZE=200000                                                          
+# -a: append this session's new history to ~/.bash_history                   
+# -n: read in new entries other sessions have appended since last check      
+PROMPT_COMMAND="history -a; history -n; ${PROMPT_COMMAND}"                   
 
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
