@@ -79,7 +79,9 @@ else
     PAD_TOP=$(clamp 0 "$(scale 6)" 6)   # inner box padding top (stock: 6)
     PAD_BOT=$(clamp 0 "$(scale 7)" 7)   # inner box padding bottom (stock: 7)
     BTN_V=$(clamp   0 "$(scale 5)" 5)   # button padding top/bottom (stock: 5)
-    FONT_PT=$(clamp 7 "$(scale 11)" 11) # title font size (stock: 11pt)
+    # Font shrinks gentler than other knobs: linear interp 11pt -> 7pt across
+    # SIZE 46 -> 18, instead of the 0-anchored scale() the others use.
+    FONT_PT=$(( 7 + ( 4 * (SIZE - 18) + 14 ) / 28 ))
     ICON_PX=$(clamp 10 "$(scale 16)" 16) # general icon size (stock: 16)
     WC_SIZE=$(clamp 14 "$(scale 22)" 22) # windowcontrols button (stock: 22)
     WC_PAD=$(clamp   2 "$(scale 4)"  4)  # windowcontrols padding (stock: 4)
