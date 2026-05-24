@@ -85,7 +85,9 @@ else
     ICON_PX=$(clamp 10 "$(scale 16)" 16) # general icon size (stock: 16)
     WC_SIZE=$(clamp 14 "$(scale 22)" 22) # windowcontrols button (stock: 22)
     WC_PAD=$(clamp   2 "$(scale 4)"  4)  # windowcontrols padding (stock: 4)
-    WC_ICON=$(clamp 10 "$(scale 16)" 16) # windowcontrols icon (stock: 16)
+    # Windowcontrols glyph shrinks gentler than other knobs: linear interp
+    # 16px -> 10px across SIZE 46 -> 18, like FONT_PT above.
+    WC_ICON=$(( 10 + ( 6 * (SIZE - 18) + 14 ) / 28 ))
 
     # Horizontal anchor compensation: as windowcontrols shrink from stock 34px,
     # the right end-box contracts and buttons drift right. Grow inner-box
