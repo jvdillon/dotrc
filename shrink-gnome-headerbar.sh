@@ -113,6 +113,15 @@ else
  *   - Only padding-top/bottom on buttons is overridden; left/right padding
  *     stays at stock so button widths and X positions don't drift.
  *   - GTK4 silently drops most rules with !important. Don't add it.
+ *   - Popovers attached to menubuttons live INSIDE the headerbar CSS subtree
+ *     ('headerbar > ... > menubutton > popover > ... > button'), so the
+ *     broad 'headerbar button' / 'headerbar label' rules leak into dropdown
+ *     menus and custom popovers. GTK4's :not() only accepts simple selectors
+ *     ('headerbar button:not(popover *)' is rejected) and lacks :has/:is, so
+ *     we scope by overriding popover descendants back to stock values at the
+ *     end of the sheet. font-size is inheritable -> 'unset' walks back up to
+ *     the theme default; min-height/padding/-gtk-icon-size aren't, so they
+ *     must be hardcoded to libadwaita-ish stock (24px / 5px / 16px).
  */
 
 /* (1) Bar height floor */
@@ -156,6 +165,21 @@ headerbar button image {
 /* (6) Title text */
 headerbar label {
     font-size: ${FONT_PT}pt;
+}
+
+/* (7) Restore stock metrics for everything inside menubutton popovers so
+ *     dropdown menus and custom popover content don't inherit our shrink.
+ *     See header note for why this is done by override rather than scope. */
+headerbar popover button {
+    min-height:     24px;
+    padding-top:    5px;
+    padding-bottom: 5px;
+}
+headerbar popover button image {
+    -gtk-icon-size: 16px;
+}
+headerbar popover label {
+    font-size: unset;
 }
 "
 fi
