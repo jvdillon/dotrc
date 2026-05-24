@@ -121,7 +121,16 @@ else
  *     we scope by overriding popover descendants back to stock values at the
  *     end of the sheet. font-size is inheritable -> 'unset' walks back up to
  *     the theme default; min-height/padding/-gtk-icon-size aren't, so they
- *     must be hardcoded to libadwaita-ish stock (24px / 5px / 16px).
+ *     must be hardcoded. Values harvested from libadwaita's compiled
+ *     stylesheet via:
+ *       gresource extract /usr/lib/*/libadwaita-1.so.0 \
+ *         /org/gnome/Adwaita/styles/default-light.css | grep ', button {'
+ *     -> 'button { min-height: 24px; min-width: 16px; padding: 5px 10px; ... }'
+ *     The 16px icon size is GTK4's default for symbolic toolbar icons.
+ *     These haven't changed across libadwaita 1.x and won't drift unless
+ *     upstream rewrites the base button rule. Custom-themed systems may have
+ *     different values, but users on custom themes have already opted out of
+ *     "stock" anyway.
  */
 
 /* (1) Bar height floor */
