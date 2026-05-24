@@ -8,9 +8,9 @@
 # Verified pixel-stable against stock with Atspi. Selectors are stock GTK4 (no
 # libadwaita dependency); GTK3 partial via symlink.
 #
-#   ./shrink-gnome-headerbar.sh --size 28 --force      # 28px-tall bars
+#   ./shrink-gnome-headerbar.sh --size 26 --force      # 28px-tall bars
 #   ./shrink-gnome-headerbar.sh --size 46              # parity (empty CSS)
-#   ./shrink-gnome-headerbar.sh                        # default --size 30
+#   ./shrink-gnome-headerbar.sh                        # default --size 28
 #
 # Re-launch GTK apps to see the change. GTK3 symlinks to the same file.
 #
@@ -35,7 +35,7 @@
 #     and rely on specificity to override windowcontrols separately.
 set -euo pipefail
 
-SIZE=30
+SIZE=28
 FORCE=0
 
 usage() {
