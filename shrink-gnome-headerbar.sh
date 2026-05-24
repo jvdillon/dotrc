@@ -113,17 +113,18 @@ else
  *   - Only padding-top/bottom on buttons is overridden; left/right padding
  *     stays at stock so button widths and X positions don't drift.
  *   - GTK4 silently drops most rules with !important. Don't add it.
- *   - Popover leak: 'headerbar button' / 'headerbar label' also match buttons
- *     and labels inside menubutton popovers (dropdown menus etc.), shrinking
- *     them too. Attempts to override the metrics back to stock inside
- *     'headerbar popover ...' made the bar itself measurably thicker in
- *     gnome-calculator (cause not fully diagnosed -- possibly GTK4 measures
- *     popover preferred size even when closed, possibly a specificity
- *     interaction with the menubutton internals). GTK4's :not() only accepts
- *     simple selectors so 'headerbar button:not(popover *)' isn't an option
- *     either. For now the leak is accepted; popover labels render at the
- *     shrunk font size. If this becomes annoying, bisect the popover override
- *     rules to find the specific one that backfires.
+ *   - Popover font leak: 'headerbar label { font-size: ... }' also matches
+ *     labels inside menubutton popovers (dropdown menu items etc.), shrinking
+ *     their text. Rule (7) restores stock font-size in popovers via 'unset',
+ *     which walks back up the inheritance chain to the theme default.
+ *     Geometry overrides (min-height / padding on popover buttons) were
+ *     tried and discarded -- they measurably thickened the headerbar in
+ *     gnome-calculator, likely because GTK4 includes popover contents in
+ *     the menubutton's natural-size measure even when the popover is closed.
+ *     font-size is inheritable and doesn't participate in size measure, so
+ *     restoring just text is safe. Popover button min-heights remain
+ *     unshrunk because rule (3) sets 'min-height: 0' which doesn't shrink
+ *     the buttons below their natural icon+padding size anyway.
  */
 
 /* (1) Bar height floor */
@@ -167,6 +168,13 @@ headerbar button image {
 /* (6) Title text */
 headerbar label {
     font-size: ${FONT_PT}pt;
+}
+
+/* (7) Restore stock font-size for popover labels (menu items etc.) so the
+ *     shrunk title font doesn't leak into dropdown menus. See header note
+ *     for why only font-size is restored (geometry overrides backfire). */
+headerbar popover label {
+    font-size: unset;
 }
 "
 fi
