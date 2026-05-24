@@ -1,6 +1,6 @@
 #!/bin/bash
 # uvr - uv run wrapper
-# Uses nearest project with pyproject.toml, falls back to ~/research
+# Uses nearest project with pyproject.toml.
 
 dir="$PWD"
 while [[ -n "$dir" ]]; do
@@ -8,4 +8,4 @@ while [[ -n "$dir" ]]; do
     dir="${dir%/*}"
 done
 
-exec uv --quiet --project "${dir:-$HOME/loop}" run --no-sync "$@"
+exec uv --quiet --project "${dir:-$HOME}" run --no-sync "$@"
