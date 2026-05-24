@@ -20,6 +20,20 @@
     tool = vimdiff
 [difftool]
     prompt = false
+[credential "https://github.com"]
+    helper =
+    helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+    helper =
+    helper = !/usr/bin/gh auth git-credential
+[credential]
+    # Persistent plaintext store at ~/.git-credentials. GitHub uses gh above;
+    # this covers any other remotes without re-auth prompts.
+    # Guard the file: chmod 600 ~/.git-credentials  (verify: ls -l ~/.git-credentials)
+    helper = store
+    # Safer alternative: in-memory cache (8h), no plaintext on disk. Costs a
+    # re-auth prompt every 8h for non-GitHub remotes.
+    # helper = cache --timeout=28800
 [submodule]
     recurse = true
 [push]
@@ -27,9 +41,29 @@
     # with `new-branch` (which already passes -u), but covers branches created
     # by other means (e.g. `git switch -c foo` then `git push`).
     autoSetupRemote = true
+[pull]
+    # Linear history is a team policy here: the workflow aliases (rebase-main,
+    # refresh-branch, squash against origin/HEAD) all assume rebase semantics.
+    # Override locally by adding `[pull] rebase = false` to .git/config AFTER
+    # the [include] line.
+    #
+    # Most teams prefer --rebase for feature branches (clean linear history)
+    # and merges for integrating completed branches into main.
+    # However, we're directly developing on main usually so we directly rebase
+    # onto it.
+    rebase = true
 [alias]
+    # Workflow assumptions baked into the aliases below:
+    #
+    #   1. Single integration branch per repo (origin/HEAD). Doesn't fit gitflow
+    #      (main + develop) or stacked PRs onto peer feature branches.
+    #
+    #   2. origin/HEAD is set on every clone. If it isn't, aliases that resolve
+    #      it will fail. One-time fix per repo:
+    #
+    #          git remote set-head origin -a
 
-    # --- Workflow: Step 1 ----------------------------------------------------------
+    # --- Workflow: Step 1 ------
     # New branch from the integration branch, pushed and tracked.
     new-branch = "!f() { \
       git fetch origin && \
@@ -60,19 +94,24 @@
     }; f"
     rb = refresh-branch
 
-
-    # --- Workflow: Step 2 ----------------------------------------------------------
+    # --- Workflow: Step 2 -----
     # Make edits.
     # Default -m to `git ais` when no message flag is given.
+    # Does exactly one thing: commit the staged index with an AI-generated
+    # message. If you pass -m/-F, that bypasses the AI step. Anything else
+    # is refused -- use plain `git commit` for -a, pathspecs, -p, --amend, etc.
+    # This keeps `git ais` (which summarizes `git diff --cached`) honest:
+    # the summary always matches what lands in the commit.
     ai-commit = "!f() { \
         case \" $* \" in \
-            *' -m'*|*' --message'*) \
-                git commit \"$@\" \
-                ;; \
-            *) \
-                git commit -m \"$(git ais)\" \"$@\" \
-                ;; \
+            *' -m'*|*' --message'*|*' -F'*|*' --file'*) exec git commit \"$@\" ;; \
         esac; \
+        if [ $# -gt 0 ]; then \
+            echo 'ai-commit: extra args refused in auto-summary mode; use `git commit` directly' >&2; exit 1; \
+        fi; \
+        msg=$(git ais) || { echo 'ai-commit: ai-summary failed' >&2; exit 1; }; \
+        case \"$msg\" in *[![:space:]]*) ;; *) echo 'ai-commit: ai-summary empty' >&2; exit 1 ;; esac; \
+        git commit -m \"$msg\"; \
     }; f"
     c = ai-commit
 
@@ -91,7 +130,7 @@
 	    else \
 	        target=\"commit '$1' vs its parent\"; \
 	    fi; \
-	    prompt=\"Without saying anything else or any other output, briefly summarize ${target} and print a <60 char summary followed by terse bulleted list. Do not list individual file changes unless essential for clarity. Do not list line counts. Avoid overly specific code references. No unicode glyphs. Do not prefix the summary with 'Summary', 'Overall', etc. Be very concise!\"; \
+	    prompt=\"Without saying anything else or any other output, briefly summarize ${target} and print a <60 char summary followed by two newlines a terse bulleted list of essential details. Do not list individual file changes unless essential for clarity. Do not list line counts. Avoid overly specific code references. No unicode glyphs. Do not prefix the summary with 'Summary', 'Overall', etc. Be very concise!\"; \
 	    echo \"$prompt\" | sagent --model claude-haiku-4-5; \
 	}; f"
     ais = ai-summary
@@ -113,7 +152,7 @@
     # - Squash after branch was pushed? git push --force-with-lease
 
 
-    # --- Workflow: Step 3 ----------------------------------------------------------
+    # --- Workflow: Step 3 -----
     # On private branch, before PR / while developing.
     rebase-main = !git fetch origin && git rebase origin/HEAD
     rbm = rebase-main
@@ -123,12 +162,12 @@
     mm = merge-main
 
 
-    # --- Workflow: Step 4 ----------------------------------------------------------
+    # --- Workflow: Step 4 ------
     # Open the PR (no alias -- use gh):
     #     gh pr create --fill --web
 
 
-    # --- Workflow: Step 5 ----------------------------------------------------------
+    # --- Workflow: Step 5 ------
     # Cleanup branch (delete local + remote, return to integration branch).
     # The `|| true` on the remote delete is intentional: GH PR auto-delete
     # often removes the remote branch before we get here, and that's fine.
@@ -148,7 +187,7 @@
     nuke-reflog = !git reflog expire --expire-unreachable=now --all && git gc --prune=now
 
 
-    # --- What's going on? ----------------------------------------------------------
+    # --- What's going on? ------
     # Full state of the branch: pushed/unpushed commits + staged/unstaged/untracked
     # files. Sections progress oldest -> newest.
     # [ -n \"$GIT_PREFIX\" ] && cd \"$GIT_PREFIX\"; \
@@ -211,7 +250,7 @@
     diffall = difftool origin/HEAD...
 
 
-    # --- Quality checks ------------------------------------------------------------
+    # --- Quality checks ------
     # `lint` and `typecheck` operate on a NUL-separated file list from
     # `changed-files`. Default scope: branch diff (origin/HEAD...HEAD)
     # plus staged, unstaged, and untracked. Optional commit arg narrows
@@ -284,80 +323,54 @@
       git switch -C \"$branch\"; \
     }; f"
 
-[credential "https://github.com"]
-    helper =
-    helper = !/usr/bin/gh auth git-credential
-[credential "https://gist.github.com"]
-    helper =
-    helper = !/usr/bin/gh auth git-credential
-[credential]
-    # Persistent plaintext store at ~/.git-credentials. GitHub uses gh above;
-    # this covers any other remotes without re-auth prompts.
-    # Guard the file: chmod 600 ~/.git-credentials  (verify: ls -l ~/.git-credentials)
-    helper = store
-    # Safer alternative: in-memory cache (8h), no plaintext on disk. Costs a
-    # re-auth prompt every 8h for non-GitHub remotes.
-    # helper = cache --timeout=28800
-[filter "lfs"]
-    process = git-lfs filter-process
-    required = true
-    clean = git-lfs clean -- %f
-    smudge = git-lfs smudge -- %f
-[pull]
-    # Refuse to auto-merge or auto-rebase on pull. Forces an explicit choice.
-    #
-    # We use ff-only to make the safe behavior the default, the destructive
-    # behavior explicit.
-    #
-    # Now git pull refuses non-fast-forward by default. When you genuinely want
-    # a merge or rebase, you ask for it explicitly:
-    #   git pull --no-ff
-    #       Switches off the ff-only restriction; creates a merge commit. Use
-    #       when local and remote diverged and you want to integrate via merge
-    #       (preserves both branches in history). With pull.ff = only set
-    #       globally, plain git pull would refuse on divergence; --no-ff
-    #       says "yes, actually merge them."
-    #   git pull --rebase
-    #       Abandons merge entirely. Replays your local commits on top of the
-    #       fetched tip, producing linear history with no merge commit. The
-    #       pull.ff setting is irrelevant because no merge happens.
-    #
-    #  Example
-    #
-    #    Local has commit X on top of an old base; remote has commit Y on top
-    #    of the same base. After git fetch:
-    #
-    #             X (local)
-    #            /
-    #      *----*
-    #            \
-    #             Y (remote)
-    #
-    # Three integrations:
-    #
-    #   1. `git pull` (with pull.ff = only) → refuses. "Not a fast-forward."
-    #   2. `git pull --no-ff` → creates merge:
-    #
-    #              X-----.
-    #             /       \
-    #       *----*         M (HEAD)
-    #             \       /
-    #              Y-----'
-    #
-    #   3. `git pull --rebase` → replays X onto Y:
-    #
-    #       *----*----Y----X' (HEAD)
-    #
-    # Pick based on what history shape you want.
-    #
-    # Most teams prefer --rebase for feature branches (clean linear history)
-    # and merges for integrating completed branches into main.
-    # git config --global pull.ff only
-    # ff = only
 
-    # Alternatively,
-    # git config --global pull.rebase true
-    rebase = true
+# === An explanation about `pull`. ======
+#
+# Refuse to auto-merge or auto-rebase on pull. Forces an explicit choice.
+#
+# We use ff-only to make the safe behavior the default, the destructive
+# behavior explicit.
+#
+# Now git pull refuses non-fast-forward by default. When you genuinely want
+# a merge or rebase, you ask for it explicitly:
+#   git pull --no-ff
+#       Switches off the ff-only restriction; creates a merge commit. Use
+#       when local and remote diverged and you want to integrate via merge
+#       (preserves both branches in history). With pull.ff = only set
+#       globally, plain git pull would refuse on divergence; --no-ff
+#       says "yes, actually merge them."
+#   git pull --rebase
+#       Abandons merge entirely. Replays your local commits on top of the
+#       fetched tip, producing linear history with no merge commit. The
+#       pull.ff setting is irrelevant because no merge happens.
+#
+#  Example
+#
+#    Local has commit X on top of an old base; remote has commit Y on top
+#    of the same base. After git fetch:
+#
+#             X (local)
+#            /
+#      *----*
+#            \
+#             Y (remote)
+#
+# Three integrations:
+#
+#   1. `git pull` (with pull.ff = only) → refuses. "Not a fast-forward."
+#   2. `git pull --no-ff` → creates merge:
+#
+#              X-----.
+#             /       \
+#       *----*         M (HEAD)
+#             \       /
+#              Y-----'
+#
+#   3. `git pull --rebase` → replays X onto Y:
+#
+#       *----*----Y----X' (HEAD)
+#
+# Pick based on what history shape you want.
 
 
 # Marker: workflow example is the last 48 lines. Quick recap:
@@ -365,13 +378,13 @@
 
 # Suppose you have A---B---C and you want to uncommit B.
 # Then:
-# git cherry-pick B                             
-# git rebase -i B~                              
-# drop B, keep the new cherry-pick at the end 
-# git reset HEAD^                               
+# git cherry-pick B
+# git rebase -i B~
+# drop B, keep the new cherry-pick at the end
+# git reset HEAD^
 
 
-# --- Workflow Example ----------------------------------------------------------
+# === Workflow Example ======
 #
 # Throughout: "the integration branch" = origin/HEAD (origin/main, origin/master,
 # etc.). Set per-repo with: git remote set-head origin -a
