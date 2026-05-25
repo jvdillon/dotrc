@@ -17,9 +17,9 @@
 #   ./shrink-gnome-headerbar.sh                        # default --size 28
 #
 # Re-launch GTK apps to see the change. Tested with:
-#   dbus-run-session -- gnome-terminal --wait
-#   gnome-calculator
-#   gnome-clocks
+#   GTK_DEBUG=interactive dbus-run-session -- gnome-terminal --wait
+#   GTK_DEBUG=interactive gnome-calculator
+#   GTK_DEBUG=interactive gnome-clocks
 #
 # Why this exists: most "shrink headerbar" snippets online drift buttons toward
 # the window edge as the bar contracts, or silently no-op because GTK4 drops
@@ -234,6 +234,9 @@ headerbar button.titlebutton,
     padding-bottom: 2px;
     padding-left:   0;
     padding-right:  0;
+}
+headerbar label {
+    font-size: 11pt;
 }
 "
 fi
