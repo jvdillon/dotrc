@@ -85,6 +85,7 @@ else
     ICON_PX=$(clamp 10 "$(scale 16)" 16) # general icon size (stock: 16)
     WC_SIZE=$(clamp 14 "$(scale 22)" 22) # windowcontrols button (stock: 22)
     WC_PAD=$(clamp   2 "$(scale 4)"  4)  # windowcontrols padding (stock: 4)
+    VS_BOX_V=$(clamp 0 "$(scale 2)" 2)   # viewswitcher inner box padding top/bot (stock: 2)
     # Windowcontrols glyph shrinks gentler than other knobs: linear interp
     # 16px -> 10px across SIZE 46 -> 18, like FONT_PT above.
     WC_ICON=$(( 10 + ( 6 * (SIZE - 18) + 14 ) / 28 ))
@@ -175,6 +176,23 @@ headerbar label {
  *     for why only font-size is restored (geometry overrides backfire). */
 headerbar popover label {
     font-size: unset;
+}
+
+/* (8) AdwViewSwitcher in the title slot (gnome-clocks, tweaks, etc.):
+ *     libadwaita ships 'viewswitcher { min-height: 34px }' plus inner
+ *     'box.wide { padding: 2px 12px }'. With our shrunk PAD_TOP/PAD_BOT the
+ *     34px floor is what determines the bar height in those apps, leaving
+ *     them noticeably taller than apps with plain buttons. Drop the floor and
+ *     scale the vertical inner padding (horizontal stays at stock so the tabs
+ *     don't reflow). Only the 'wide' (icon+label horizontal) policy is
+ *     handled -- 'narrow' (icon stacked over label) is unavoidably tall and
+ *     not used by apps that fit a short headerbar. */
+headerbar viewswitcher {
+    min-height: 0;
+}
+headerbar viewswitcher button.toggle > stack > box.wide {
+    padding-top:    ${VS_BOX_V}px;
+    padding-bottom: ${VS_BOX_V}px;
 }
 "
 fi
