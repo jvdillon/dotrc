@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
 #
-# Shrinks GTK4 headerbars.
+# Shrinks GTK headerbars.
 #
-# GtkHeaderBar, AdwHeaderBar (i.e. nearly every modern GNOME app: files,
+# GTK4: GtkHeaderBar, AdwHeaderBar (i.e. nearly every modern GNOME app: files,
 # settings, calculator, text-editor, ...) via user CSS at
 # ~/.config/gtk-4.0/gtk.css.
 # Verified pixel-stable against stock with Atspi. Selectors are stock GTK4 (no
-# libadwaita dependency); GTK3 partial via symlink.
+# libadwaita dependency).
+#
+# GTK3: conservative companion CSS at ~/.config/gtk-3.0/gtk.css. It avoids the
+# GTK4-specific title-font and windowcontrols sizing rules that make
+# gnome-terminal render tiny text and oval window buttons.
 #
 #   ./shrink-gnome-headerbar.sh --size 26 --force      # 28px-tall bars
 #   ./shrink-gnome-headerbar.sh --size 46              # parity (empty CSS)
 #   ./shrink-gnome-headerbar.sh                        # default --size 28
 #
-# Re-launch GTK apps to see the change. GTK3 symlinks to the same file.
+# Re-launch GTK apps to see the change.
 #
 # Why this exists: most "shrink headerbar" snippets online drift buttons toward
 # the window edge as the bar contracts, or silently no-op because GTK4 drops
@@ -71,8 +75,11 @@ mkdir -p "$(dirname "$GTK4")" "$(dirname "$GTK3")"
 
 if (( SIZE >= 46 )); then
     # Parity mode. Empty file = no overrides at all = true stock.
-    CSS="/* Headerbar override: --size ${SIZE} >= stock 46.
- * Empty stylesheet: libadwaita defaults render unmodified. */
+    CSS_GTK4="/* Headerbar override: --size ${SIZE} >= stock 46.
+ * Empty stylesheet: GTK4/libadwaita defaults render unmodified. */
+"
+    CSS_GTK3="/* Headerbar override: --size ${SIZE} >= stock 46.
+ * Empty stylesheet: GTK3 defaults render unmodified. */
 "
 else
     # Vertical knobs scale; horizontal knobs stay at stock.
@@ -99,7 +106,7 @@ else
     (( COMP > 6 )) && COMP=6
     PAD_SIDE=$(( 7 + COMP ))
 
-    CSS="/* Compact GTK headerbar. Target height: ${SIZE}px (stock: 46).
+    CSS_GTK4="/* Compact GTK4 headerbar. Target height: ${SIZE}px (stock: 46).
  * Vertical metrics scale with SIZE; horizontal metrics stay at stock so the
  * right-side button cluster stays anchored.
  *
@@ -195,14 +202,48 @@ headerbar viewswitcher button.toggle > stack > box.wide {
     padding-bottom: ${VS_BOX_V}px;
 }
 "
+
+    CSS_GTK3="/* Compact GTK3 headerbar. Target height: ${SIZE}px (stock: 46).
+ * Conservative GTK3 rules avoid shrinking headerbar labels or windowcontrols;
+ * those GTK4-calibrated selectors distort gnome-terminal's titlebar. */
+
+headerbar, .titlebar {
+    min-height: ${SIZE}px;
+    padding-top:    0;
+    padding-bottom: 0;
+}
+
+headerbar > box,
+.titlebar > box {
+    padding-top:    0;
+    padding-bottom: 0;
+}
+
+headerbar button {
+    min-height:     0;
+    padding-top:    ${BTN_V}px;
+    padding-bottom: ${BTN_V}px;
+}
+
+headerbar button.titlebutton,
+.titlebar button.titlebutton {
+    padding-top:    2px;
+    padding-bottom: 2px;
+    padding-left:   0;
+    padding-right:  0;
+}
+"
 fi
 
-if [[ -e "$GTK4" && $FORCE -eq 0 ]]; then
-    diff <(printf '%s' "$CSS") "$GTK4"
-else
-    printf '%s' "$CSS" > "$GTK4"
-fi
+write_css() {
+    local path=$1 css=$2
+    if [[ -e "$path" && $FORCE -eq 0 ]]; then
+        diff <(printf '%s' "$css") "$path"
+    else
+        [[ -L "$path" ]] && rm -f "$path"
+        printf '%s' "$css" > "$path"
+    fi
+}
 
-[[ -L "$GTK3" || $FORCE -eq 0 ]] || rm -f "$GTK3"
-[[ -L "$GTK3" ]] || ln -s ../gtk-4.0/gtk.css "$GTK3"
-[[ "$(readlink "$GTK3")" == "../gtk-4.0/gtk.css" ]]
+write_css "$GTK4" "$CSS_GTK4"
+write_css "$GTK3" "$CSS_GTK3"
