@@ -235,10 +235,10 @@ headerbar button.titlebutton,
     padding-left:   0;
     padding-right:  0;
 }
-headerbar label {
-    font-size: 11pt;
-}
 "
+#headerbar label {
+#    font-size: 11pt;
+#}
 fi
 
 write_css() {
