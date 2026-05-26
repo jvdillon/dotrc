@@ -15,7 +15,7 @@ set -euo pipefail
 
 SIZE=26
 FORCE=0
-FONT_PT=11
+FONT_PT=10
 GTK4_ICON_PX=12
 STOCK_SIZE=46
 
