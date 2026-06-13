@@ -2,11 +2,20 @@
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 # for examples
 
-# If not running interactively, don't do anything
-case $- in
-    *i*) ;;
-      *) return;;
-esac
+# # If not running interactively, don't do anything
+# case $- in
+#     *i*) ;;
+#       *) return;;
+# esac
+
+# Expand aliases even non-interactively so `ssh host ll` works (off by
+# default for `ssh host cmd`; harmless no-op in interactive shells).
+shopt -s expand_aliases
+
+# Interactive-only: history, prompt, lesspipe, window-title, completion.
+# Cosmetic/stateful and pointless (or wasteful) for `ssh host cmd`; the
+# stock guard's `return` is replaced by gating just this block on $-.
+case $- in *i*)
 
 # don't put duplicate lines or lines starting with space in the history.
 # ... or force ignoredups and ignorespace
@@ -19,10 +28,10 @@ shopt -s histappend
 # HISTFILESIZE : Max number of lines contained in the history file.
 # HISTSIZE     : Number of commands to remember in the command history.
 HISTSIZE=100000
-HISTFILESIZE=200000                                                          
-# -a: append this session's new history to ~/.bash_history                   
-# -n: read in new entries other sessions have appended since last check      
-PROMPT_COMMAND="history -a; history -n; ${PROMPT_COMMAND}"                   
+HISTFILESIZE=200000
+# -a: append this session's new history to ~/.bash_history
+# -n: read in new entries other sessions have appended since last check
+PROMPT_COMMAND="history -a; history -n; ${PROMPT_COMMAND}"
 
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
@@ -34,11 +43,6 @@ shopt -s checkwinsize
 
 # make less more friendly for non-text input files, see lesspipe(1)
 [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
-
-# set variable identifying the chroot you work in (used in the prompt below)
-if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-    debian_chroot=$(cat /etc/debian_chroot)
-fi
 
 # set a fancy prompt (non-color, unless we know we "want" color)
 case "$TERM" in
@@ -59,6 +63,11 @@ if [ -n "$force_color_prompt" ]; then
     else
 	color_prompt=
     fi
+fi
+
+# set variable identifying the chroot you work in (used in the prompt below)
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
 fi
 
 # https://stackoverflow.com/questions/15883416/adding-git-branch-on-the-bash-command-prompt
@@ -83,6 +92,19 @@ xterm*|rxvt*)
 *)
     ;;
 esac
+
+# enable programmable completion features (you don't need to enable
+# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc).
+if ! shopt -oq posix; then
+  if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+  elif [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+  fi
+fi
+
+;; esac  # end interactive-only block
 
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
@@ -117,21 +139,10 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 
-# enable programmable completion features (you don't need to enable
-# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
-# sources /etc/bash.bashrc).
-if ! shopt -oq posix; then
-  if [ -f /usr/share/bash-completion/bash_completion ]; then
-    . /usr/share/bash-completion/bash_completion
-  elif [ -f /etc/bash_completion ]; then
-    . /etc/bash_completion
-  fi
-fi
-
 # Fix scaling on HiDPI monitors.
 export _JAVA_OPTIONS="-Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=2.0"
 
-# Speed up GTK4 over X11 forwarding by disabling D-Bus session bus
+# Speed up GTK4 over X11 forwarding by disabling D-Bus session bus.
 if [ -n "$SSH_CONNECTION" ]; then
     export DBUS_SESSION_BUS_ADDRESS="unix:path=/dev/null"
     export GDK_BACKEND=x11
@@ -161,3 +172,5 @@ unset ROCM_HOME
 if [ -d "$HOME/.npm-global/bin" ]; then
     export PATH="$HOME/.npm-global/bin${PATH:+:${PATH}}"
 fi
+
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
