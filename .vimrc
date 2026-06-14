@@ -31,9 +31,10 @@ set backspace=indent,eol,start
 " Use UTF-8 encoding.
 set encoding=utf-8
 
-" Enable auto-indent and smart indent for new lines.
+" Enable auto-indent for new lines. (Filetype indent plugins, enabled below via
+" 'filetype plugin indent on', handle language-specific cases; 'smartindent' is
+" a legacy C-only heuristic that misindents other filetypes, so it is omitted.)
 set autoindent
-set smartindent
 
 " Use 4-space-wide tabs expanded to spaces.
 set tabstop=4
@@ -62,7 +63,8 @@ set ignorecase
 set autowrite
 
 " Use Q for formatting instead of Ex mode.
-map Q gq
+nnoremap Q gq
+xnoremap Q gq
 
 " Enable filetype detection, plugins, and language-dependent indenting.
 if has("autocmd")
@@ -85,16 +87,11 @@ if has("autocmd")
 endif
 
 " Filetype mappings (highlighting for lark lives in .vim/syntax/lark.vim).
-augroup ftdetectlocal
+" Group name 'filetypedetect' matches the runtime convention for detection.
+augroup filetypedetect
     autocmd!
     autocmd BufRead,BufNewFile *.lark set filetype=lark
     autocmd BufRead,BufNewFile *.csl  set filetype=xml
-augroup END
-
-" Use 4-space indentation for Python files.
-augroup pythonindent
-    autocmd!
-    autocmd FileType python setl sw=4 sts=4 et
 augroup END
 
 " Toggle search highlighting with F1.
@@ -104,34 +101,58 @@ set invhls
 " Toggle line wrapping with F2.
 nnoremap <F2> :set wrap!<CR>
 
-" Toggle block comments with F11 (uncomment) and F12 (comment) per filetype.
-augroup commentkeys
-    autocmd!
-    autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F11> :-1/^# /s///<CR>
-    autocmd BufNewFile,BufRead *.pl,*.sh,*.py vmap <F12> :-1/^/s//# /<CR>
-    autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F11> :-1/^%/s///<CR>
-    autocmd BufNewFile,BufRead *.m,*.tex,*.sty,*.bib vmap <F12> :-1/^/s//%/<CR>
-    autocmd BufNewFile,BufRead *.sc vmap <F11> :-1/^;/s///<CR>
-    autocmd BufNewFile,BufRead *.sc vmap <F12> :-1/^/s//;/<CR>
-    autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F11> :-1/^\/\//s///<CR>
-    autocmd BufNewFile,BufRead *.h,*.c,*.cpp vmap <F12> :-1/^/s//\/\//<CR>
-augroup END
+" Block comment/uncomment with F12/F11 over the visual selection.
+" Keyed off &filetype (not 'commentstring', which is unreliably populated and
+" differs between vim and nvim) via one prefix table, so behavior is identical
+" in both editors and covers every listed filetype without per-extension autocmds.
+let g:comment_prefix = {
+    \ 'python': '# ', 'sh': '# ', 'perl': '# ',
+    \ 'plaintex': '%', 'tex': '%', 'matlab': '%', 'bib': '%',
+    \ 'scheme': '; ', 'lisp': '; ',
+    \ 'lua': '-- ', 'sql': '-- ', 'haskell': '-- ',
+    \ 'vim': '" ',
+    \ 'c': '// ', 'cpp': '// ', 'scala': '// ', 'rust': '// ',
+    \ 'javascript': '// ', 'typescript': '// ',
+    \ }
 
-" Detect Python filetype and set comment keys for scripts using `uv run` shebang.
+" a:uncomment=0 prepends the prefix; =1 strips one leading prefix. Range comes
+" from the visual selection (the mapping supplies '<,'>). 'e' flag silences the
+" no-match error so uncommenting an already-bare line is a harmless no-op.
+function! Comment(uncomment) range
+    let l:p = get(g:comment_prefix, &filetype, '')
+    if empty(l:p)
+        echohl WarningMsg | echo 'No comment prefix for filetype: ' . &filetype | echohl None
+        return
+    endif
+    let l:esc = escape(l:p, '/\')
+    if a:uncomment
+        execute a:firstline . ',' . a:lastline . 's/^' . l:esc . '//e'
+    else
+        execute a:firstline . ',' . a:lastline . 's/^/' . l:esc . '/e'
+    endif
+endfunction
+
+xnoremap <silent> <F11> :call Comment(1)<CR>
+xnoremap <silent> <F12> :call Comment(0)<CR>
+
+" Treat `uv run ... python` shebang scripts (often extensionless) as Python.
 augroup uvrundetect
     autocmd!
-    autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | set filetype=python | endif
-    autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F11> :-1/^# /s///<CR> | endif
-    autocmd BufRead,BufNewFile * if getline(1) =~ '^#!.*uv run.*python' | vmap <F12> :-1/^/s//# /<CR> | endif
+    autocmd BufRead,BufNewFile *
+        \ if getline(1) =~ '^#!.*uv run.*python' | set filetype=python | endif
 augroup END
 
 " Fix terminal escape codes for Shift and Ctrl arrow keys.
-set <S-Up>=O1;2A
-set <S-Down>=O1;2B
-set <S-Right>=O1;2C
-set <S-Left>=O1;2D
-set <C-Right>=O1;5C
-set <C-Left>=O1;5D
+" Only needed in real Vim: Neovim parses these keys natively via terminfo and
+" has no t_xx/termcap key-override mechanism, so guard the block out under nvim.
+if !has('nvim')
+    set <S-Up>=O1;2A
+    set <S-Down>=O1;2B
+    set <S-Right>=O1;2C
+    set <S-Left>=O1;2D
+    set <C-Right>=O1;5C
+    set <C-Left>=O1;5D
+endif
 
 " Resize the current split by 5 lines/columns with Shift+arrow keys.
 " Direction is position-aware: the border moves in the arrow's direction.
