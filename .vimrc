@@ -1,29 +1,22 @@
+" Portable across vim (vim.basic), vim.tiny, and Neovim.
+" - vim.basic / Neovim: full configuration, verified working in both.
+" - vim.tiny: compiled without +eval, so it cannot run let/if/function/autocmd.
+"   The basic :set/:map commands above the 'if 1' block still apply; the
+"   eval-dependent block is parsed and skipped (no errors) -- see its comment.
+" Terminal key codes for Shift/Ctrl arrows are guarded to real Vim (Neovim
+" decodes them natively); the resize and comment features work in vim and nvim.
+
 " Use Vim settings instead of Vi defaults (must be first, changes other options).
 set nocompatible
 
-" Make buffers non-readonly when using vimdiff.
-if &diff
-    set noreadonly
-endif
+" --- Basic options ---------------------------------------------------------
+" These are plain :set / :map commands that work in every build, including
+" vim.tiny (no +eval). Everything that needs +eval lives in the 'if 1' block
+" below, which non-eval builds (vim.tiny) parse and skip without errors.
 
 " Automatically reload files changed outside of Vim.
 set autoread
-augroup autoreload
-    autocmd!
-    autocmd CursorHold,CursorHoldI * checktime
-    autocmd FocusGained,BufEnter * checktime
-augroup END
 set updatetime=200
-
-" Use a dark background with syntax highlighting in color terminals.
-if &t_Co > 1 && !has("gui_running")
-    set background=dark
-    set notermguicolors
-    syntax enable
-endif
-
-" Clear the PAGER variable so :! commands don't pipe through a pager.
-let $PAGER=''
 
 " Allow backspacing over indentation, line breaks, and insert-mode start.
 set backspace=indent,eol,start
@@ -62,9 +55,44 @@ set ignorecase
 " Automatically save before commands like :next and :make.
 set autowrite
 
+" Toggle search highlighting with F1 (and enable it by default).
+nnoremap <F1> :set invhls hls?<CR>
+set invhls
+
+" Toggle line wrapping with F2.
+nnoremap <F2> :set wrap!<CR>
+
 " Use Q for formatting instead of Ex mode.
 nnoremap Q gq
 xnoremap Q gq
+
+" --- Eval-dependent configuration ------------------------------------------
+" 'if 1' is the canonical guard (see vim's own defaults.vim): builds with +eval
+" run this block; vim.tiny lacks +eval, parses the if/endif, and skips the body
+" instead of erroring (E319) on every let/function/autocmd inside.
+if 1
+
+" Make buffers non-readonly when using vimdiff.
+if &diff
+    set noreadonly
+endif
+
+" Reload files changed outside of Vim (needs autocmd for the triggers).
+augroup autoreload
+    autocmd!
+    autocmd CursorHold,CursorHoldI * checktime
+    autocmd FocusGained,BufEnter * checktime
+augroup END
+
+" Use a dark background with syntax highlighting in color terminals.
+if &t_Co > 1 && !has("gui_running")
+    set background=dark
+    set notermguicolors
+    syntax enable
+endif
+
+" Clear the PAGER variable so :! commands don't pipe through a pager.
+let $PAGER=''
 
 " Enable filetype detection, plugins, and language-dependent indenting.
 if has("autocmd")
@@ -94,13 +122,6 @@ augroup filetypedetect
     autocmd BufRead,BufNewFile *.csl  set filetype=xml
 augroup END
 
-" Toggle search highlighting with F1.
-nnoremap <F1> :set invhls hls?<CR>
-set invhls
-
-" Toggle line wrapping with F2.
-nnoremap <F2> :set wrap!<CR>
-
 " Block comment/uncomment with F12/F11 over the visual selection.
 " Keyed off &filetype (not 'commentstring', which is unreliably populated and
 " differs between vim and nvim) via one prefix table, so behavior is identical
@@ -115,10 +136,12 @@ let g:comment_prefix = {
     \ 'javascript': '// ', 'typescript': '// ',
     \ }
 
-" a:uncomment=0 prepends the prefix; =1 strips one leading prefix. Range comes
-" from the visual selection (the mapping supplies '<,'>). 'e' flag silences the
-" no-match error so uncommenting an already-bare line is a harmless no-op.
-function! Comment(uncomment) range
+" a:uncomment=0 prepends the prefix; =1 strips one leading prefix. The :range
+" is the visual selection: starting a command-line from visual mode inserts
+" '<,'> automatically, which the function's 'range' attribute receives as
+" a:firstline/a:lastline. 'e' flag silences the no-match error so uncommenting
+" an already-bare line is a harmless no-op.
+function! s:Comment(uncomment) range
     let l:p = get(g:comment_prefix, &filetype, '')
     if empty(l:p)
         echohl WarningMsg | echo 'No comment prefix for filetype: ' . &filetype | echohl None
@@ -132,8 +155,8 @@ function! Comment(uncomment) range
     endif
 endfunction
 
-xnoremap <silent> <F11> :call Comment(1)<CR>
-xnoremap <silent> <F12> :call Comment(0)<CR>
+xnoremap <silent> <F11> :call <SID>Comment(1)<CR>
+xnoremap <silent> <F12> :call <SID>Comment(0)<CR>
 
 " Treat `uv run ... python` shebang scripts (often extensionless) as Python.
 augroup uvrundetect
@@ -142,16 +165,27 @@ augroup uvrundetect
         \ if getline(1) =~ '^#!.*uv run.*python' | set filetype=python | endif
 augroup END
 
-" Fix terminal escape codes for Shift and Ctrl arrow keys.
-" Only needed in real Vim: Neovim parses these keys natively via terminfo and
-" has no t_xx/termcap key-override mechanism, so guard the block out under nvim.
+" Teach real Vim the terminal's escape sequences for Shift/Ctrl arrow keys, so
+" the split-resize mappings below can bind to <S-Up> etc. Guarded to real Vim:
+" Neovim decodes these keys natively and has no t_xx/termcap override mechanism,
+" so the block is skipped (and unneeded) there -- resize works in nvim regardless.
+"
+" The leading char of each RHS is a literal <Esc> (0x1b), required by the
+" 'set <key>=' idiom; if it gets stripped (copy-paste, or an editor that eats
+" control bytes) the mapping silently binds the wrong key. Keep it.
+"
+" The bytes after <Esc> are terminal-specific. These 'O'-prefixed values are the
+" author's; a generic xterm uses '[' instead (e.g. <Esc>[1;2A) -- compare
+" `infocmp` kUP/kDN/kLFT/kRIT. If Shift-arrow resize is inert in real Vim, adjust
+" these to match your terminal. (Verified working under Neovim via native keys;
+" the real-Vim path depends on your terminal emitting exactly these sequences.)
 if !has('nvim')
-    set <S-Up>=O1;2A
-    set <S-Down>=O1;2B
-    set <S-Right>=O1;2C
-    set <S-Left>=O1;2D
-    set <C-Right>=O1;5C
-    set <C-Left>=O1;5D
+    set <S-Up>=O1;2A
+    set <S-Down>=O1;2B
+    set <S-Right>=O1;2C
+    set <S-Left>=O1;2D
+    set <C-Right>=O1;5C
+    set <C-Left>=O1;5D
 endif
 
 " Resize the current split by 5 lines/columns with Shift+arrow keys.
@@ -194,3 +228,5 @@ function! s:Resize(dir)
         execute "5wincmd >"
     endif
 endfunction
+
+endif " --- end eval-dependent block ----------------------------------------
