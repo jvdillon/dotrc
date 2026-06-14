@@ -84,6 +84,13 @@ if has("autocmd")
     augroup END
 endif
 
+" Filetype mappings (highlighting for lark lives in .vim/syntax/lark.vim).
+augroup ftdetectlocal
+    autocmd!
+    autocmd BufRead,BufNewFile *.lark set filetype=lark
+    autocmd BufRead,BufNewFile *.csl  set filetype=xml
+augroup END
+
 " Use 4-space indentation for Python files.
 augroup pythonindent
     autocmd!
