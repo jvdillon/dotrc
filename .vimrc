@@ -174,10 +174,10 @@ augroup END
 " 'set <key>=' idiom; if it gets stripped (copy-paste, or an editor that eats
 " control bytes) the mapping silently binds the wrong key. Keep it.
 "
-" The bytes after <Esc> are terminal-specific. These 'O'-prefixed values are the
-" author's; a generic xterm uses '[' instead (e.g. <Esc>[1;2A) -- compare
-" `infocmp` kUP/kDN/kLFT/kRIT. If Shift-arrow resize is inert in real Vim, adjust
-" these to match your terminal. (Verified working under Neovim via native keys;
+" The bytes after <Esc> are terminal-specific. These 'O'-prefixed values match
+" one xterm-style terminal; a generic xterm uses '[' instead (e.g. <Esc>[1;2A)
+" -- compare `infocmp` kUP/kDN/kLFT/kRIT. If Shift-arrow resize is inert in real
+" Vim, adjust these to match your terminal. (Verified working under Neovim via native keys;
 " the real-Vim path depends on your terminal emitting exactly these sequences.)
 if !has('nvim')
     set <S-Up>=O1;2A
