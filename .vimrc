@@ -115,8 +115,11 @@ if has("autocmd")
 endif
 
 " Filetype mappings (highlighting for lark lives in .vim/syntax/lark.vim).
-" Group name 'filetypedetect' matches the runtime convention for detection.
-augroup filetypedetect
+" NB: do NOT name this augroup 'filetypedetect' -- that is the runtime's own
+" detection group; reusing it makes ':doautocmd filetypedetect BufRead <file>'
+" (fired by the runtime/plugins) warn "No matching autocommands" for any file
+" not matching the patterns below. Use a private name.
+augroup vimrc_ftdetect
     autocmd!
     autocmd BufRead,BufNewFile *.lark set filetype=lark
     autocmd BufRead,BufNewFile *.csl  set filetype=xml
