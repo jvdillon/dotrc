@@ -84,14 +84,47 @@ augroup autoreload
     autocmd FocusGained,BufEnter * checktime
 augroup END
 
+" Remove boldface from highlighting while keeping the colours. For each bold
+" group, resolve its effective colour (following links) and re-apply it with the
+" bold attribute cleared.
+function! s:Unbold()
+    for l:g in getcompletion('', 'highlight')
+        let l:id = synIDtrans(hlID(l:g))
+        if synIDattr(l:id, 'bold', 'gui') ==# '1' || synIDattr(l:id, 'bold', 'cterm') ==# '1'
+            let l:gfg = synIDattr(l:id, 'fg#', 'gui')
+            let l:cfg = synIDattr(l:id, 'fg', 'cterm')
+            let l:gbg = synIDattr(l:id, 'bg#', 'gui')
+            let l:cbg = synIDattr(l:id, 'bg', 'cterm')
+            let l:c = 'highlight ' . l:g . ' cterm=NONE gui=NONE'
+            if l:gfg != '' | let l:c .= ' guifg=' . l:gfg | endif
+            if l:cfg != '' | let l:c .= ' ctermfg=' . l:cfg | endif
+            if l:gbg != '' | let l:c .= ' guibg=' . l:gbg | endif
+            if l:cbg != '' | let l:c .= ' ctermbg=' . l:cbg | endif
+            execute l:c
+        endif
+    endfor
+endfunction
+
 " Use a dark background with syntax highlighting in color terminals.
 if &t_Co > 1 && !has("gui_running")
     " Tell the colorscheme the terminal is dark so it picks dark-suited colors.
     set background=dark
-    " Use the terminal's 256-color palette; comment out to use 24-bit RGB (default).
-    set notermguicolors
+
     " Turn on syntax highlighting while keeping any custom :highlight overrides.
     syntax enable
+
+    " Use the terminal's 256-color palette; comment out to use 24-bit RGB (default).
+    set notermguicolors
+
+    " De-bolding is potentially useful when termguicolors is enabled, ie, not
+    " disabled. We de-bold the highlighting now and after any later
+    " :colorscheme (Neovim sets one after sourcing this file), so the
+    " de-bolding sticks.
+    " augroup unbold
+    "     autocmd!
+    "     autocmd ColorScheme * call s:Unbold()
+    " augroup END
+    " call s:Unbold()
 endif
 
 " Clear the PAGER variable so :! commands don't pipe through a pager.
