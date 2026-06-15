@@ -49,7 +49,8 @@ set mouse=
 if has('nvim-0.10')
   colorscheme vim
 
-lua << EOF
+  " sudo apt install neovim-treesitter
+  lua << EOF
 do
   -- Align Treesitter to Vim-syntax's look. Key difference: Vim leaves ordinary
   -- identifiers/arguments/calls/punctuation UNCOLOURED (default fg) and colours
