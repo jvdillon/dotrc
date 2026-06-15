@@ -86,8 +86,11 @@ augroup END
 
 " Use a dark background with syntax highlighting in color terminals.
 if &t_Co > 1 && !has("gui_running")
+    " Tell the colorscheme the terminal is dark so it picks dark-suited colors.
     set background=dark
+    " Use the terminal's 256-color palette; comment out to use 24-bit RGB (default).
     set notermguicolors
+    " Turn on syntax highlighting while keeping any custom :highlight overrides.
     syntax enable
 endif
 
@@ -124,6 +127,17 @@ augroup vimrc_ftdetect
     autocmd BufRead,BufNewFile *.lark set filetype=lark
     autocmd BufRead,BufNewFile *.csl  set filetype=xml
 augroup END
+
+" Highlight fenced code blocks inside Markdown by language. This drives Vim's
+" builtin markdown syntax (which otherwise renders fences as plain text); under
+" Neovim, Treesitter handles fenced code via injection and ignores this -- so
+" both editors highlight Markdown code blocks the same. 'name=ft' maps a fence
+" label to a syntax file (e.g. ```sh and ```bash both use the 'sh' syntax).
+let g:markdown_fenced_languages = [
+    \ 'python', 'sh=bash', 'bash=sh', 'c', 'cpp', 'rust',
+    \ 'json', 'yaml', 'toml', 'javascript', 'typescript',
+    \ 'html', 'css', 'java', 'ruby', 'lua', 'vim',
+    \ ]
 
 " Block comment/uncomment with F12/F11 over the visual selection.
 " Keyed off &filetype (not 'commentstring', which is unreliably populated and
