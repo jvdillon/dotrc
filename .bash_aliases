@@ -1,5 +1,3 @@
-export EMAIL='abc@xyz.com'
-
 # Old way:
 # alias vi='nvim'
 # alias vim='nvim'
@@ -321,7 +319,7 @@ alias smartscp="rsync -aPhv --no-r --stats --rsh=ssh"
 whatsmyip  () {
     {
         # dig -4 +short txt ch whoami.cloudflare @1.1.1.1 ||
-        curl -fsS4 https://canhazip.com ||
+        curl -fsS4 https://ipv4.icanhazip.com ||
         curl -fsS4 https://api.ipify.org ||
         curl -fsS4 https://ipinfo.io/ip;
     } | tr -d '"\n';
@@ -330,13 +328,32 @@ whatsmyip  () {
 whatsmyip6 () {
     {
         # dig -6 +short txt ch whoami.cloudflare @2606:4700:4700::1111 ||
-        curl -fsS6 https://canhazip.com ||
+        curl -fsS6 https://ipv6.icanhazip.com ||
         curl -fsS6 https://api64.ipify.org
     } | tr -d '"\n';
     echo
 }
-whatsmyhost () { host "$(whatsmyip)"; }
-whatsmyhost6 () { host "$(whatsmyip6)"; }
+whatsmyhost () {
+    local ip out
+    ip="$(whatsmyip)"
+    [ -n "$ip" ] || { echo "no IPv4"; return 1; }
+    out="$(host "$ip" 2>/dev/null)"
+    case "$out" in
+        *pointer*) echo "$out" ;;
+        *)         echo "no PTR for $ip" ;;
+    esac
+}
+
+whatsmyhost6 () {
+    local ip out
+    ip="$(whatsmyip6 2>/dev/null)"
+    [ -n "$ip" ] || { echo "no IPv6 connectivity"; return 1; }
+    out="$(host "$ip" 2>/dev/null)"
+    case "$out" in
+        *pointer*) echo "$out" ;;
+        *)         echo "no PTR for $ip" ;;
+    esac
+}
 
 
 checkvpn() {
