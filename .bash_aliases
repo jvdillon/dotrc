@@ -31,6 +31,8 @@ restart-dash-to-panel() {
     gnome-extensions enable dash-to-panel@jderose9.github.com
 }
 
+alias headlines='echo "summarize news.google.com; markdown; bullets per section; <15 words/bullet." | sagent --ephemeral | mdcat --width 80'
+
 
 # sudo apt install fd-find  (Ubuntu installs binary as fdfind)
 #
@@ -316,10 +318,25 @@ alias smartscp="rsync -aPhv --no-r --stats --rsh=ssh"
 # also, a real backup can be done as:
 # su; dd if=/dev/hda1 | gzip | ssh userid@remote_host 'dd of=hda1.gz'
 
-
-whatsmyip () { curl --silent canhazip.com || curl --silent https://ipinfo.io/ip; }
-
+whatsmyip  () {
+    {
+        # dig -4 +short txt ch whoami.cloudflare @1.1.1.1 ||
+        curl -fsS4 https://canhazip.com ||
+        curl -fsS4 https://api.ipify.org ||
+        curl -fsS4 https://ipinfo.io/ip;
+    } | tr -d '"\n';
+    echo
+}
+whatsmyip6 () {
+    {
+        # dig -6 +short txt ch whoami.cloudflare @2606:4700:4700::1111 ||
+        curl -fsS6 https://canhazip.com ||
+        curl -fsS6 https://api64.ipify.org
+    } | tr -d '"\n';
+    echo
+}
 whatsmyhost () { host "$(whatsmyip)"; }
+whatsmyhost6 () { host "$(whatsmyip6)"; }
 
 
 checkvpn() {

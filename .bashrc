@@ -174,3 +174,5 @@ if [ -d "$HOME/.npm-global/bin" ]; then
 fi
 
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
+[ -f ~/.secrets ] && . ~/.secrets
