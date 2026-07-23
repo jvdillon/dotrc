@@ -521,3 +521,18 @@ evince() { /usr/bin/evince "$1" &>/dev/null & }
 power_draw() {
     awk '{printf "%.1f W\n", $1/1000000}' /sys/class/power_supply/BAT*/power_now
 }
+
+# View remote file with local viewer
+viewremote() {
+    if [ -z "$1" ]; then
+        echo "Usage: viewremote [host:]<path>"
+        return 1
+    fi
+    local remote_path="$1"
+    # Only prepend "colossus:" if not already in "host:path" format
+    if [[ ! "$remote_path" =~ : ]]; then
+        remote_path="colossus:$remote_path"
+    fi
+    local tmpfile="/tmp/viewremote_$(basename "$1")"
+    scp "$remote_path" "$tmpfile" && eog "$tmpfile"
+}

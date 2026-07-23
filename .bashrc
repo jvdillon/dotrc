@@ -27,8 +27,8 @@ shopt -s histappend
 
 # HISTFILESIZE : Max number of lines contained in the history file.
 # HISTSIZE     : Number of commands to remember in the command history.
-HISTSIZE=100000
-HISTFILESIZE=200000
+HISTSIZE=1000000
+HISTFILESIZE=2000000
 # -a: append this session's new history to ~/.bash_history
 # -n: read in new entries other sessions have appended since last check
 PROMPT_COMMAND="history -a; history -n; ${PROMPT_COMMAND}"
