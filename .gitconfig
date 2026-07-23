@@ -36,6 +36,31 @@
     # helper = cache --timeout=28800
 [submodule]
     recurse = true
+[difftool "vimdiff"]
+    # Live example (matches git's built-in vimdiff flags for the text path).
+    #
+    # `git difftool` has no native binary skip -- it launches your diff tool once
+    # per changed file, including png/pt/onnx blobs. The fix is to redefine YOUR
+    # difftool's cmd so it no-ops on files marked `binary` in .gitattributes.
+    #
+    # git resolves `difftool.<tool>.cmd` ahead of its built-in definition
+    # (git-mergetool--lib: get_merge_tool_cmd), so an override here wins ONLY for
+    # whoever's `diff.tool` is that tool, and is inert for everyone else. So this
+    # file can ship one block per tool without forcing anything on anyone.
+    #
+    # A live `vimdiff` block is provided below. To add YOURS, copy this template
+    # into your OWN ~/.gitconfig (not here), and replace the `else` command with
+    # your tool's normal invocation:
+    #
+    #   [difftool "<your-tool>"]            # e.g. meld, kdiff3, bcompare, difft
+    #       cmd = "if git check-attr binary -- \"$MERGED\" | grep -q ': set$'; \
+    #              then echo \"skip binary: $MERGED\"; \
+    #              else <your-tool> \"$LOCAL\" \"$REMOTE\"; fi"
+    #
+    # The skip-check (the `if ... check-attr ...` part) is identical for every
+    # tool; only the command after `else` changes. .gitattributes is the single
+    # source of truth for what counts as binary.
+    cmd = "if git check-attr binary -- \"$MERGED\" | grep -q ': set$'; then echo \"skip binary: $MERGED\"; else vim -R -f -d -c 'wincmd l' -c 'cd $GIT_PREFIX' \"$LOCAL\" \"$REMOTE\"; fi"
 [push]
     # First push of a new branch sets upstream automatically. Belt-and-suspenders
     # with `new-branch` (which already passes -u), but covers branches created
@@ -95,23 +120,28 @@
     rb = refresh-branch
 
     # --- Workflow: Step 2 -----
-    # Make edits.
-    # Default -m to `git ais` when no message flag is given.
-    # Does exactly one thing: commit the staged index with an AI-generated
-    # message. If you pass -m/-F, that bypasses the AI step. Anything else
-    # is refused -- use plain `git commit` for -a, pathspecs, -p, --amend, etc.
-    # This keeps `git ais` (which summarizes `git diff --cached`) honest:
-    # the summary always matches what lands in the commit.
+    # Thin wrapper over `git commit`: when no message flag is given, default
+    # -m to `git ais`. If a message is already set (-m/--message/-F/--file),
+    # or on any other flag, pass straight through to `git commit` unchanged.
+    #
+    # When no message is given we commit with a dummy message FIRST so
+    # pre-commit hooks run before the (slow) ai-summary call: a hook
+    # failure or auto-fix aborts the commit and no LLM tokens are spent.
+    # Once the dummy commit lands (hooks passed), ai-summary describes it
+    # and `--amend --no-verify` swaps in the real message without rerunning
+    # hooks. Everything else -- staging, --amend, pathspecs -- is plain
+    # `git commit` behavior.
     ai-commit = "!f() { \
-        case \" $* \" in \
-            *' -m'*|*' --message'*|*' -F'*|*' --file'*) exec git commit \"$@\" ;; \
-        esac; \
-        if [ $# -gt 0 ]; then \
-            echo 'ai-commit: extra args refused in auto-summary mode; use `git commit` directly' >&2; exit 1; \
-        fi; \
-        msg=$(git ais) || { echo 'ai-commit: ai-summary failed' >&2; exit 1; }; \
-        case \"$msg\" in *[![:space:]]*) ;; *) echo 'ai-commit: ai-summary empty' >&2; exit 1 ;; esac; \
-        git commit -m \"$msg\"; \
+        for arg do \
+            case \"$arg\" in \
+                -m|--message|-F|--file|--message=*|--file=*) exec git commit \"$@\" ;; \
+            esac; \
+        done; \
+        git commit -m 'WIP: ai-commit pending message' \"$@\" || exit 1; \
+        msg=$(git ais HEAD) || { echo 'ai-commit: ai-summary failed; message left as WIP (git ais HEAD | git commit --amend -F -)' >&2; exit 1; }; \
+        case \"$msg\" in *[![:space:]]*) ;; *) echo 'ai-commit: ai-summary empty; message left as WIP' >&2; exit 1 ;; esac; \
+        printf '%s\\n---\\n%s\\n---\\n' 'ai-commit: generated message:' \"$msg\" >&2; \
+        git commit --amend --no-verify -m \"$msg\"; \
     }; f"
     c = ai-commit
 
@@ -122,16 +152,17 @@
 
     amend = commit --amend --no-edit
 
-    # Print an AI-generated summary of a commit vs its parent. Default: HEAD.
-    # Requires `sagent` on PATH.
+    # Print an AI-generated changelog for a diff. No arg: the staged diff.
+    # With a commit-ish: that commit vs its parent. Hands the diff to
+    # ai-change-description.sh (owns prompt + sagent), which install.sh puts
+    # on PATH at ~/.local/bin. Requires `sagent` on PATH too.
 	ai-summary = "!f() { \
 	    if [ -z \"$1\" ]; then \
-	        target=\"the staged changes (run: git diff --cached)\"; \
+	        git diff --cached --quiet && { echo 'ai-summary: no staged changes' >&2; return 1; }; \
+	        git diff --cached | ai-change-description.sh; \
 	    else \
-	        target=\"commit '$1' vs its parent\"; \
+	        git show \"$1\" | ai-change-description.sh; \
 	    fi; \
-	    prompt=\"Without saying anything else or any other output, briefly summarize ${target} and print a <60 char summary followed by two newlines a terse bulleted list of essential details. Do not list individual file changes unless essential for clarity. Do not list line counts. Avoid overly specific code references. No unicode glyphs. Do not prefix the summary with 'Summary', 'Overall', etc. Be very concise!\"; \
-	    echo \"$prompt\" | sagent --model claude-haiku-4-5; \
 	}; f"
     ais = ai-summary
 
@@ -141,6 +172,49 @@
     fixup = "!f() { git commit --fixup=\"${1:-HEAD}\"; }; f"
     f = fixup
 
+    # Reword any commit's message non-interactively, addressed like fixup:
+    #     git reword <commit-ish> [new message words...]
+    #     git reword :/broken-thing 'fix: handle broken thing'
+    #     git reword HEAD~2                 # no message -> opens editor for it
+    # <commit-ish> is anything rev-parse resolves (sha, :/regex, HEAD~2, tag).
+    # HEAD is a plain --amend (no rebase, no downstream hash churn). Otherwise a
+    # scripted rebase rewords exactly the target: the range is <sha>^..HEAD, so
+    # the target is the FIRST todo line -- we flip only that pick->reword,
+    # sidestepping short-hash abbreviation fragility. --autostash survives a
+    # dirty tree. REWRITES HISTORY from the target forward (new hashes); if
+    # pushed to a shared branch, follow with `git pf`.
+    reword = "!f() { \
+        [ -n \"$1\" ] || { echo 'reword: usage: git reword <commit-ish> [message...]' >&2; return 2; }; \
+        target=$1; shift; \
+        case \"$1\" in \
+            -m|--message) shift; msg=\"$1\" ;; \
+            *) msg=\"$*\" ;; \
+        esac; \
+        sha=$(git rev-parse --verify --quiet \"$target\") || { \
+            echo \"reword: cannot resolve '$target'\" >&2; return 1; }; \
+        sha=$(git rev-parse --verify --quiet \"$sha^{commit}\") || { \
+            echo \"reword: '$target' is not a commit\" >&2; return 1; }; \
+        if [ \"$sha\" = \"$(git rev-parse HEAD)\" ]; then \
+            if [ -n \"$msg\" ]; then git commit --amend -m \"$msg\"; \
+            else git commit --amend; fi; \
+            return; \
+        fi; \
+        if git rev-parse --verify --quiet \"$sha^\" >/dev/null 2>&1; then \
+            base=\"$sha^\"; \
+        else \
+            base=--root; \
+        fi; \
+        if [ -n \"$msg\" ]; then \
+            GIT_SEQUENCE_EDITOR=\"sed -i -e '1s/^pick /reword /'\" \
+            GIT_EDITOR=\"printf '%s\\n' \\\"$msg\\\" >\" \
+            git rebase -i --autostash \"$base\"; \
+        else \
+            GIT_SEQUENCE_EDITOR=\"sed -i -e '1s/^pick /reword /'\" \
+            git rebase -i --autostash \"$base\"; \
+        fi; \
+    }; f"
+    rw = reword
+
     add-fixup = !git add -A && git fixup
     af = add-fixup
 
@@ -149,7 +223,13 @@
     s = squash
     # Note:
     # - Squash before first push?       git push
-    # - Squash after branch was pushed? git push --force-with-lease
+    # - Squash after branch was pushed? git pf
+
+    # Safe force-push: refuses if the remote moved since your last fetch,
+    # so it can't silently clobber a collaborator's push. Use after any
+    # history rewrite (rebase-main, squash-after-push, amend).
+    push-force = push --force-with-lease
+    pf = push-force
 
 
     # --- Workflow: Step 3 -----
@@ -200,7 +280,7 @@
       }; \
       log_range() { \
         range=\"$1\"; shift; \
-        git -c diff.statNameWidth=$COLUMNS --no-pager log --color=always --stat --abbrev-commit --relative \"$range\" \"$@\"; \
+        git -c diff.statNameWidth=$COLUMNS --no-pager log --reverse --color=always --stat --abbrev-commit --relative \"$range\" \"$@\"; \
       }; \
       if u=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then \
         unpushed_title='unpushed'; \
@@ -419,7 +499,7 @@
 #
 #      git add -A
 #      git rebase --continue
-#      git push --force-with-lease  # if branch was already pushed
+#      git push-force  # (push --force-with-lease) if branch was already pushed
 #
 #
 # 4. Open the PR.

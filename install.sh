@@ -41,6 +41,8 @@ while IFS= read -r f; do
     safelink "$RCDIR/.vim/$f" "$HOME/.vim/$f"
 done < <(cd "$RCDIR/.vim" && find . -type f | sed 's|^\./||')
 
-safelink "$RCDIR/nvim_init.vim" "$HOME/.config/nvim/init.vim"
-safelink "$RCDIR/bc"            "$HOME/.local/bin/bc"  0744
-safelink "$RCDIR/uvr"           "$HOME/.local/bin/uvr" 0744
+safelink "$RCDIR/nvim_init.vim"           "$HOME/.config/nvim/init.vim"
+safelink "$RCDIR/bc"                       "$HOME/.local/bin/bc"                     0744
+safelink "$RCDIR/uvr"                      "$HOME/.local/bin/uvr"                    0744
+# `git ais` shells out to this by bare name, so it must be on PATH.
+safelink "$RCDIR/ai-change-description.sh" "$HOME/.local/bin/ai-change-description.sh" 0755
