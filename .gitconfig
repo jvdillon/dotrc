@@ -1,3 +1,6 @@
+# To install:
+# git config --local include.path ../.gitconfig
+#
 # Note: repo overrides are in <repo>/.git/config
 #
 # Workflow assumptions baked into the aliases below:
@@ -11,6 +14,8 @@
 #          git remote set-head origin -a
 [user]
     name = Your Name
+	# GitHub noreply (email kept private). Regenerate with:
+	#   gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"'
     email = your@email.com
 [core]
     editor = vim
