@@ -104,6 +104,8 @@ if ! shopt -oq posix; then
   fi
 fi
 
+export LESS=-R
+
 ;; esac  # end interactive-only block
 
 # enable color support of ls and also add handy aliases
