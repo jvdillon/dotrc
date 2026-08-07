@@ -175,6 +175,9 @@ if [ -d "$HOME/.npm-global/bin" ]; then
     export PATH="$HOME/.npm-global/bin${PATH:+:${PATH}}"
 fi
 
-[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+case ":${PATH}:" in
+    *:"$HOME/.cargo/bin":*) ;;
+    *) export PATH="$HOME/.cargo/bin:$PATH" ;;
+esac
 
 [ -f ~/.secrets ] && . ~/.secrets
