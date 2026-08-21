@@ -48,6 +48,7 @@ safelink "$RCDIR/uvr"                      "$HOME/.local/bin/uvr"               
 safelink "$RCDIR/ai-change-description.sh" "$HOME/.local/bin/ai-change-description.sh" 0755
 
 # In root:
-# for p in ".secrets" ".pypirc" ".condarc" ".profile" ".bash_aliases" ".bashrc" ".gitconfig" ".inputrc" ".pystartup" ".screenrc" ".tmux.conf" ".vimrc" ".config/nvim/init.vim" ".local/bin/bc" ".local/bin/uvr" ".local/bin/ai-change-description.sh"; do
+# for p in ".profile" ".bash_aliases" ".bashrc" ".gitconfig" ".inputrc" ".pystartup" ".screenrc" ".tmux.conf" ".vimrc" ".config/nvim/init.vim" ".local/bin/bc" ".local/bin/uvr" ".local/bin/ai-change-description.sh"; do
+#     [ -f "$p" ] && [ ! -L "$p" ] && [ ! -f "$p.bak" ] && mv $p $p.bak
 #     ln -sf $(eval echo ~$SUDO_USER)/$p $(dirname $p)
 # done
