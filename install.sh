@@ -31,7 +31,7 @@ safelink() {
 }
 
 # Home-directory dotfiles.
-for f in ".bash_aliases" ".bashrc" ".gitconfig" ".inputrc" ".pystartup" ".screenrc" ".tmux.conf" ".vimrc" ; do
+for f in ".profile" ".bash_aliases" ".bashrc" ".gitconfig" ".inputrc" ".pystartup" ".screenrc" ".tmux.conf" ".vimrc" ; do
     safelink "$RCDIR/$f" "$HOME/$f"
 done
 
@@ -46,3 +46,8 @@ safelink "$RCDIR/bc"                       "$HOME/.local/bin/bc"                
 safelink "$RCDIR/uvr"                      "$HOME/.local/bin/uvr"                    0744
 # `git ais` shells out to this by bare name, so it must be on PATH.
 safelink "$RCDIR/ai-change-description.sh" "$HOME/.local/bin/ai-change-description.sh" 0755
+
+# In root:
+# for p in ".secrets" ".pypirc" ".condarc" ".profile" ".bash_aliases" ".bashrc" ".gitconfig" ".inputrc" ".pystartup" ".screenrc" ".tmux.conf" ".vimrc" ".config/nvim/init.vim" ".local/bin/bc" ".local/bin/uvr" ".local/bin/ai-change-description.sh"; do
+#     ln -sf $(eval echo ~$SUDO_USER)/$p $(dirname $p)
+# done
