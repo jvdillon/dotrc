@@ -12,19 +12,22 @@
 #      it will fail. One-time fix per repo:
 #
 #          git remote set-head origin -a
+[core]
+    editor = vim
+	pager = less -FRX
+[difftool]
+    prompt = false
 [user]
     name = Your Name
 	# GitHub noreply (email kept private). Regenerate with:
 	#   gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"'
     email = your@email.com
-[core]
-    editor = vim
+[protocol "file"]
+	allow = always
 [diff]
     tool = vimdiff
 [merge]
     tool = vimdiff
-[difftool]
-    prompt = false
 [credential "https://github.com"]
     helper =
     helper = !/usr/bin/gh auth git-credential
@@ -162,6 +165,7 @@
     # ai-change-description.sh (owns prompt + sagent), which install.sh puts
     # on PATH at ~/.local/bin. Requires `sagent` on PATH too.
 	ai-summary = "!f() { \
+	    root=$(git rev-parse --show-toplevel) || return 1; \
 	    if [ -z \"$1\" ]; then \
 	        git diff --cached --quiet && { echo 'ai-summary: no staged changes' >&2; return 1; }; \
 	        git diff --cached | ai-change-description.sh; \
@@ -174,7 +178,19 @@
     add-amend = !git add -A && git amend
     aa = add-amend
 
-    fixup = "!f() { git commit --fixup=\"${1:-HEAD}\"; }; f"
+    # $1 is the commit-ish only when it isn't a flag, so `git f --no-verify`
+    # means HEAD rather than --fixup=--no-verify. Resolve it up front: git
+    # commit runs pre-commit hooks BEFORE rejecting a bad --fixup target, so
+    # an unresolvable ref would otherwise cost a full hook run to report.
+    # Not "${@:2}" -- git runs aliases under /bin/sh, where that is a
+    # bashism ("Bad substitution" on a dash system).
+    fixup = "!f() { \
+        case \"${1:-}\" in ''|-*) c=HEAD ;; *) c=\"$1\"; shift ;; esac; \
+        sha=$(git rev-parse --verify --quiet \"$c\") && \
+        sha=$(git rev-parse --verify --quiet \"$sha^{commit}\") || { \
+            echo \"fixup: cannot resolve commit '$c'\" >&2; return 1; }; \
+        git commit --fixup=\"$sha\" \"$@\"; \
+    }; f"
     f = fixup
 
     # Reword any commit's message non-interactively, addressed like fixup:
@@ -285,7 +301,7 @@
       }; \
       log_range() { \
         range=\"$1\"; shift; \
-        git -c diff.statNameWidth=$COLUMNS --no-pager log --reverse --color=always --stat --abbrev-commit --relative \"$range\" \"$@\"; \
+        git -c diff.statNameWidth=$COLUMNS --no-pager log --reverse --color=always --stat --relative --abbrev-commit \"$range\" \"$@\"; \
       }; \
       if u=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then \
         unpushed_title='unpushed'; \
@@ -296,7 +312,7 @@
         unpushed_range='origin/HEAD..HEAD'; \
       fi; \
       show \"$unpushed_title\" \"$(log_range \"$unpushed_range\" \"$@\")\"; \
-      show 'staged'    \"$(git -c diff.statNameWidth=$COLUMNS --no-pager diff --color=always --cached --stat --relative \"$@\")\"; \
+      show 'staged'    \"$(git -c diff.statNameWidth=$COLUMNS --no-pager diff --color=always --stat --relative --cached \"$@\")\"; \
       show 'unstaged'  \"$(git -c diff.statNameWidth=$COLUMNS --no-pager diff --color=always --stat --relative \"$@\")\"; \
       show 'untracked' \"$(git ls-files --others --exclude-standard)\"; \
     }; f"
